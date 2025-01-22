@@ -79,6 +79,9 @@
                     pendingFetch = null;
                 }
 
+                // Remove both event listeners
+                window.removeEventListener('unload', cleanup);
+                window.removeEventListener('beforeunload', cleanup);
                 console.log('Widget cleanup completed');
             }
 
@@ -159,7 +162,7 @@
                     retryCount = 0;
 
                     Object.assign(targetElement.style, WIDGET_CONFIG.styles.success);
-                    targetElement.innerHTML = `<div>Wait<br>${data.waitTime}</div>`;
+                    targetElement.textContent = `Wait ${data.waitTime}`;
                     console.log('Widget data updated:', data);
                 } catch (error) {
                     console.error('Failed to update widget:', error);
@@ -184,6 +187,12 @@
             }
 
             initializeWidget();
+            
+            // Add cleanup on page unload with proper reference
+            window.addEventListener('unload', cleanup);
+            
+            // Also clean up on beforeunload for better browser compatibility
+            window.addEventListener('beforeunload', cleanup);
         }
 
         init();
