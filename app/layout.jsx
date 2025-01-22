@@ -24,8 +24,8 @@ export default function RootLayout({ children }) {
                     </div>
                 </div>
                 <script>
-                    console.log("Script is running!");
-                    document.body.style.backgroundColor = "lightgreen";
+                    console.log(&quot;Script is running!&quot;);
+                    document.body.style.backgroundColor = &quot;lightgreen&quot;;
                 </script>
             </body>
         </html>
