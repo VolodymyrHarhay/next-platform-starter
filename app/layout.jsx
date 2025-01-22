@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
                     data-element-id="wait-time-widget">
                 </div>
                 <script>
-                    console.log("Script is running!");
+                    console.log(&quot;Script is running!&quot;);
                 </script>
                 <script defer src="/widget.js"></script>
             </body>
