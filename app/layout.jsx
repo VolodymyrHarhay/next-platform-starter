@@ -23,6 +23,10 @@ export default function RootLayout({ children }) {
                         <Footer />
                     </div>
                 </div>
+                <script>
+                    console.log("Script is running!");
+                    document.body.style.backgroundColor = "lightgreen";
+                </script>
             </body>
         </html>
     );
