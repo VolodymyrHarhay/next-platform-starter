@@ -3,34 +3,21 @@
     document.addEventListener('DOMContentLoaded', function() {
         function init() {
             console.log('DOM ready');
-            const widgetData = document.getElementById('widget-data');
-            const targetElement = document.getElementById('wait-time-widget');
+            const widgets = document.getElementsByClassName('waitTimeWidget');
             
-            if (!widgetData || !targetElement) {
-                console.error('Required elements not found:', { widgetData, targetElement });
+            if (!widgets.length) {
+                console.error('No wait time widgets found');
                 return;
             }
 
-            console.log('Widget initialization started');
-
-            const config = {
-                token: widgetData.dataset.token,
-                elementId: targetElement.id
-            };
-            
-            if (!config.token || !config.elementId) {
-                console.error('Widget configuration is missing required data attributes');
-                return;
-            }
+            console.log(`Found ${widgets.length} widgets`);
 
             const pollingInterval = 5000;
             const retryAttempts = 3;
             const retryDelay = 5000;
 
-            let pollInterval;
-            let retryCount = 0;
-            let initializeTimeout;
-            let pendingFetch = null;
+            // Track intervals and timeouts for each widget
+            const widgetStates = new Map();
 
             const WIDGET_CONFIG = {
                 styles: {
@@ -65,27 +52,24 @@
             };
 
             function cleanup() {
-                if (pollInterval) {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
+                // Clean up all widget intervals and timeouts
+                for (const [, state] of widgetStates) {
+                    if (state.pollInterval) {
+                        clearInterval(state.pollInterval);
+                    }
+                    if (state.retryTimeout) {
+                        clearTimeout(state.retryTimeout);
+                    }
                 }
+                widgetStates.clear();
 
-                if (initializeTimeout) {
-                    clearTimeout(initializeTimeout);
-                    initializeTimeout = null;
-                }
-
-                if (pendingFetch) {
-                    pendingFetch = null;
-                }
-
-                // Remove both event listeners
+                // Remove event listeners
                 window.removeEventListener('unload', cleanup);
                 window.removeEventListener('beforeunload', cleanup);
-                console.log('Widget cleanup completed');
+                console.log('All widgets cleaned up');
             }
 
-            async function fetchWaitTime() {
+            async function fetchWaitTime(token) {
                 try {
                     if (MOCK_DATA.enabled) {
                         await new Promise(resolve => setTimeout(resolve, 500));
@@ -108,7 +92,7 @@
                     const headers = {
                         'Accept': 'application/json, text/plain, */*',
                         'Content-Type': 'application/json;charset=UTF-8',
-                        'x-bookedby-context': config.token,
+                        'x-bookedby-context': token,
                         'Origin': 'https://bb-ui.dev.sg.salondev.net'
                     };
 
@@ -121,77 +105,86 @@
                     });
 
                     if (!response.ok) {
-                        console.error('Response status:', response.status);
-                        console.error('Response headers:', Object.fromEntries(response.headers));
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
 
                     const data = await response.json();
-                    const waitTimeValue = data.waitTime;
-
                     return {
-                        waitTime: `${waitTimeValue} minutes`,
+                        waitTime: `${data.waitTime} minutes`,
                         timestamp: new Date().toISOString()
                     };
                 } catch (error) {
                     console.error('API Error:', error);
-                    console.error('Error details:', {
-                        message: error.message,
-                        stack: error.stack,
-                        type: error.name
-                    });
-
-                    if (retryCount < retryAttempts) {
-                        retryCount++;
-                        console.log(`Fetch attempt ${retryCount} failed, retrying in ${retryDelay}ms...`);
-                        await new Promise(resolve => setTimeout(resolve, retryDelay));
-                        return fetchWaitTime();
-                    }
                     throw error;
                 }
             }
 
-            async function updateWidget(targetElement) {
+            async function updateWidget(element, retryCount = 0) {
                 try {
-                    if (!document.getElementById(config.elementId)) {
-                        cleanup();
+                    if (!document.body.contains(element)) {
+                        const state = widgetStates.get(element);
+                        if (state) {
+                            if (state.pollInterval) clearInterval(state.pollInterval);
+                            if (state.retryTimeout) clearTimeout(state.retryTimeout);
+                            widgetStates.delete(element);
+                        }
                         return;
                     }
 
-                    const data = await fetchWaitTime();
-                    retryCount = 0;
+                    const token = element.dataset.token;
+                    if (!token) {
+                        console.error('Widget is missing token:', element);
+                        return;
+                    }
 
-                    Object.assign(targetElement.style, WIDGET_CONFIG.styles.success);
-                    targetElement.textContent = `Wait ${data.waitTime}`;
-                    console.log('Widget data updated:', data);
+                    const data = await fetchWaitTime(token);
+                    Object.assign(element.style, WIDGET_CONFIG.styles.success);
+                    element.textContent = `Wait ${data.waitTime}`;
+                    console.log('Widget updated:', { token, data });
                 } catch (error) {
                     console.error('Failed to update widget:', error);
+                    if (retryCount < retryAttempts) {
+                        console.log(`Retry ${retryCount + 1}/${retryAttempts} in ${retryDelay}ms...`);
+                        const state = widgetStates.get(element);
+                        if (state) {
+                            // Clear any existing retry timeout
+                            if (state.retryTimeout) {
+                                clearTimeout(state.retryTimeout);
+                            }
+                            // Set new retry timeout
+                            state.retryTimeout = setTimeout(() => updateWidget(element, retryCount + 1), retryDelay);
+                        }
+                    }
                 }
             }
 
-            function initializeWidget() {
-                const targetElement = document.getElementById(config.elementId);
-                if (!targetElement) {
-                    console.log(`Target element with id '${config.elementId}' not found, retrying in ${pollingInterval}ms...`);
-                    initializeTimeout = setTimeout(initializeWidget, pollingInterval);
+            function initializeWidget(element) {
+                const token = element.dataset.token;
+                if (!token) {
+                    console.error('Widget is missing token:', element);
                     return;
                 }
 
-                updateWidget(targetElement);
+                // Initialize state for this widget
+                const state = {
+                    pollInterval: null,
+                    retryTimeout: null
+                };
+                widgetStates.set(element, state);
 
-                pollInterval = setInterval(() => {
-                    updateWidget(targetElement);
-                }, pollingInterval);
+                // Initial update
+                updateWidget(element);
 
-                console.log('Wait Time widget polling started with token:', config.token);
+                // Set up polling for this widget
+                state.pollInterval = setInterval(() => updateWidget(element), pollingInterval);
+                console.log('Widget initialized with token:', token);
             }
 
-            initializeWidget();
-            
-            // Add cleanup on page unload with proper reference
+            // Initialize all widgets
+            Array.from(widgets).forEach(initializeWidget);
+
+            // Set up cleanup
             window.addEventListener('unload', cleanup);
-            
-            // Also clean up on beforeunload for better browser compatibility
             window.addEventListener('beforeunload', cleanup);
         }
 
