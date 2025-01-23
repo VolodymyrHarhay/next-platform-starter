@@ -40,13 +40,13 @@
             };
 
             const API_CONFIG = {
-                url: 'https://bb-ui.dev.sg.salondev.net/api/v1/Checkin/Waittime/Stores',
-                method: 'POST',
+                url: 'https://bb-ui.dev.sg.salondev.net/api/v1/Widget/Waittime/External',
+                method: 'GET',
                 mode: 'cors'
             };
 
             const MOCK_DATA = {
-                enabled: true,
+                enabled: false,
                 waitTimes: [5, 10, 15, 20, 25, 30],
                 currentIndex: 0
             };
@@ -81,27 +81,16 @@
                         };
                     }
 
-                    const payload = {
-                        services: [],
-                        storeUidList: [
-                            "5012f7ba-a79b-4ce1-a84d-37236904bcc3",
-                            "764d9f16-11ea-4c3c-9478-8949701b5033"
-                        ]
-                    };
-
                     const headers = {
-                        'Accept': 'application/json, text/plain, */*',
-                        'Content-Type': 'application/json;charset=UTF-8',
-                        'x-bookedby-context': token,
-                        'Origin': 'https://bb-ui.dev.sg.salondev.net'
+                        'Accept': 'application/json',
+                        'X-BookedBy-Widget-Context': token
                     };
 
                     const response = await fetch(API_CONFIG.url, {
                         method: API_CONFIG.method,
                         headers: headers,
-                        credentials: 'include',
-                        mode: 'cors',
-                        body: JSON.stringify(payload)
+                        // credentials: 'include',
+                        // mode: 'cors'
                     });
 
                     if (!response.ok) {
@@ -110,8 +99,8 @@
 
                     const data = await response.json();
                     return {
-                        waitTime: `${data.waitTime} minutes`,
-                        timestamp: new Date().toISOString()
+                        waitTime: data.response.waitTime,
+                        timestamp: data.response.waitTimeGeneratedAt
                     };
                 } catch (error) {
                     console.error('API Error:', error);
