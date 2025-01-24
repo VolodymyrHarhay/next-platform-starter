@@ -1,4 +1,6 @@
 (function() {
+    if (typeof window === 'undefined') return;
+
     // Inject CSS styles
     const styles = `
         .waitTimeWidget {
@@ -56,11 +58,8 @@
                     }
                 }
                 widgetStates.clear();
-
-                if (window) {
-                    window.removeEventListener('unload', cleanup);
-                    window.removeEventListener('beforeunload', cleanup);
-                }
+                window.removeEventListener('unload', cleanup);
+                window.removeEventListener('beforeunload', cleanup);
             }
 
             function formatWaitTime(timeString) {
@@ -68,7 +67,11 @@
                 
                 const [hours, minutes] = timeString.split(':').map(Number);
                 const totalMinutes = hours * 60 + minutes;
-                return `${totalMinutes} min`;
+
+                if (hours > 0) {
+                    return `${hours}h ${minutes > 0 ? minutes + 'min' : ''}`;
+                }
+                return `${totalMinutes}min`;
             }
 
             async function fetchWaitTime(token) {
@@ -89,7 +92,7 @@
 
                     const data = await response.json();
                     return {
-                        waitTime: data.response.waitTime,
+                        waitTime: data.response.waitTime
                     };
                 } catch (error) {
                     console.error('API Error:', error);
@@ -111,7 +114,7 @@
 
                     const token = element.dataset.token;
                     if (!token) {
-                        console.error('Widget is missing token:', element);
+                        console.error('Widget token not found');
                         return;
                     }
 
@@ -157,10 +160,8 @@
 
             Array.from(widgets).forEach(initializeWidget);
 
-            if (window) {
-                window.addEventListener('unload', cleanup);
-                window.addEventListener('beforeunload', cleanup);
-            } 
+            window.addEventListener('unload', cleanup);
+            window.addEventListener('beforeunload', cleanup);
         }
 
         init();
