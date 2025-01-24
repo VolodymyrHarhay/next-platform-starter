@@ -40,6 +40,7 @@ export default function Page() {
                 >
                     Read the Docs
                 </Link>
+                <div className="waitTimeWidget" data-token="eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJTdG9yZUlkIjoiOWU3NmIyM2UtZGVmMy01Mjg4LWI3MGQtNzVlNDhlYWI2NDNhIiwiQm9va2luZ0dyb3VwSWQiOiJkZDdkODA4Mi02YjFiLTQzNDQtYWIxNS05YzdlMzk5NTc1NDMiLCJEZXBsb3ltZW50LVVpZCI6ImM1OWI3NTY5LTIwMzYtODI1NC1jNjcwLWU5ZjQ2NGJhNTRmNiIsIlN0b3JlLUlkIjoiNSIsIldpZGdldC1JZCI6IjFmYzYxZmRjLWU2NWItNGIwYi05NDdhLWM3OGI1NzQ4YTFjNSIsImlzcyI6IkJvb2tlZEJ5LldpZGdldCIsImF1ZCI6IkJvb2tlZEJ5In0.nDbwrWxXw3kTabERMS9XVmiba9zbJ5Wi3PgWP84tOuA"></div>
             </section>
             {!!ctx && (
                 <section className="flex flex-col gap-4">
