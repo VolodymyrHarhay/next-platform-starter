@@ -6,7 +6,7 @@
             font-size: 16px;
             padding: 5px 20px;
             background-color: #FFFFFF;
-            border: 2px solid #000000;
+            border: 1px solid #000000;
             border-radius: 30px;
             display: inline-flex;
             align-items: center;

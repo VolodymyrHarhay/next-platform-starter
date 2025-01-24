@@ -41,6 +41,7 @@ export default function Page() {
                     Read the Docs
                 </Link>
                 <div className="waitTimeWidget" data-token="eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJTdG9yZUlkIjoiYzM4MDdjZjUtMDVlOC00YjRkLTk2YzktZGM4ZTc4YTUwNWY0IiwiQm9va2luZ0dyb3VwSWQiOiJkZDdkODA4Mi02YjFiLTQzNDQtYWIxNS05YzdlMzk5NTc1NDMiLCJEZXBsb3ltZW50LVVpZCI6ImM1OWI3NTY5LTIwMzYtODI1NC1jNjcwLWU5ZjQ2NGJhNTRmNiIsIlN0b3JlLUlkIjoiNiIsIldpZGdldC1JZCI6IjI2ZjNiM2IwLWM5YjAtNDFhNC05NGMzLTFjY2E2YmMyYjNkMCIsImlzcyI6IkJvb2tlZEJ5LldpZGdldCIsImF1ZCI6IkJvb2tlZEJ5In0.gRnVp8eoepxSczcd4rIEhdTZhXKZbCdE7pm8szhkRxQ"></div>
+            </section>
             {!!ctx && (
                 <section className="flex flex-col gap-4">
                     <Markdown content={contextExplainer} />
