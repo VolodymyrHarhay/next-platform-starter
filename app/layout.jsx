@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
                         <Footer />
                     </div>
                 </div>
-                <script defer  crossorigin="anonymous" src="/widget.js"></script>
+                <script defer  crossorigin="anonymous" src="https://volodymyrharhay.github.io/next-platform-starter/public/widget.js"></script>
             </body>
         </html>
     );
