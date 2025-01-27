@@ -89,6 +89,14 @@
 
                     const data = await response.json();
 
+                    console.log({data});
+
+                    if (!response.ok) {
+                        const error = new Error('Failed to fetch wait time');
+                        error.response = data;
+                        throw error;
+                    }
+
                     return {
                         waitTime: data.response?.waitTime
                     };
@@ -123,8 +131,8 @@
                     } else {
                         element.textContent = 'closed';
                     }
-                    console.log('Widget updated:', { token, data });
                 } catch (error) {
+                    cosnole.log({error}); 
                     element.classList.remove('has-time');
                     
                     if (error?.response?.userMessage) {
