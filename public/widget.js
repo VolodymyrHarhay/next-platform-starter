@@ -87,16 +87,12 @@
                         headers: headers
                     });
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
                     const data = await response.json();
+
                     return {
-                        waitTime: data.response.waitTime
+                        waitTime: data.response?.waitTime
                     };
                 } catch (error) {
-                    console.error('API Error:', error);
                     throw error;
                 }
             }
@@ -129,8 +125,13 @@
                     }
                     console.log('Widget updated:', { token, data });
                 } catch (error) {
-                    console.error('Failed to update widget:', error);
                     element.classList.remove('has-time');
+                    
+                    if (error?.response?.userMessage) {
+                        console.error('Failed to update widget:', error.response.userMessage);
+                    } else {
+                        console.error('Failed to update widget:', error);
+                    }
 
                     const state = widgetStates.get(element);
                     if (state && attempt < retryAttempts) {
