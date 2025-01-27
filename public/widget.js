@@ -76,33 +76,27 @@
             }
 
             async function fetchWaitTime(token) {
-                try {
-                    const headers = {
-                        'Accept': 'application/json',
-                        'X-BookedBy-Widget-Context': token
-                    };
+                const headers = {
+                    'Accept': 'application/json',
+                    'X-BookedBy-Widget-Context': token
+                };
 
-                    const response = await fetch(API_CONFIG.url, {
-                        method: API_CONFIG.method,
-                        headers: headers
-                    });
+                const response = await fetch(API_CONFIG.url, {
+                    method: API_CONFIG.method,
+                    headers: headers
+                });
 
-                    const data = await response.json();
+                const data = await response.json();
 
-                    console.log({data, response});
-
-                    if (!response.ok) {
-                        const error = new Error('Failed to fetch wait time');
-                        error.response = data;
-                        throw error;
-                    }
-
-                    return {
-                        waitTime: data.response?.waitTime
-                    };
-                } catch (error) {
+                if (!response.ok) {
+                    const error = new Error('Failed to fetch wait time');
+                    error.response = data;
                     throw error;
                 }
+
+                return {
+                    waitTime: data.response?.waitTime
+                };
             }
 
             async function updateWidget(element, attempt = 1) {
@@ -132,7 +126,6 @@
                         element.textContent = 'closed';
                     }
                 } catch (error) {
-                    console.log({error}); 
                     element.classList.remove('has-time');
                     
                     if (error?.response?.userMessage) {
