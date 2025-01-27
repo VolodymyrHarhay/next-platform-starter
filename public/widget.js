@@ -89,7 +89,7 @@
 
                     const data = await response.json();
 
-                    console.log({data});
+                    console.log({data, response});
 
                     if (!response.ok) {
                         const error = new Error('Failed to fetch wait time');
@@ -132,7 +132,7 @@
                         element.textContent = 'closed';
                     }
                 } catch (error) {
-                    cosnole.log({error}); 
+                    console.log({error}); 
                     element.classList.remove('has-time');
                     
                     if (error?.response?.userMessage) {
