@@ -4,18 +4,20 @@
     // Inject CSS styles
     const styles = `
         .waitTimeWidget {
-            color: #000000;
-            font-size: 16px;
-            padding: 5px 20px;
-            background-color: #FFFFFF;
-            border: 1px solid #000000;
-            border-radius: 30px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: fit-content;
             min-height: 35px;
             min-width: 100px;
+        }
+        .waitTimeWidget.has-time {
+            color: #000000;
+            font-size: 16px;
+            padding: 5px 20px;
+            background-color: #FFFFFF;
+            border: 1px solid #000000;
+            border-radius: 30px;
         }
     `;
 
@@ -26,7 +28,6 @@
     // Auto-initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         function init() {
-            console.log('DOM ready');
             const widgets = document.getElementsByClassName('waitTimeWidget');
             
             if (!widgets.length) {
@@ -71,7 +72,7 @@
                 if (hours > 0) {
                     return `${hours}h ${minutes > 0 ? minutes + 'min' : ''}`;
                 }
-                return `${totalMinutes}min`;
+                return `${totalMinutes} min`;
             }
 
             async function fetchWaitTime(token) {
@@ -115,18 +116,22 @@
                     const token = element.dataset.token;
                     if (!token) {
                         console.error('Widget token not found');
+                        element.classList.remove('has-time');
                         return;
                     }
 
                     const data = await fetchWaitTime(token);
-                    console.log(data.waitTime);
-                    if (data.waitTime && data.waitTime !== null) {
+                    if (data.waitTime) {
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
+                        element.classList.add('has-time');
+                    } else {
+                        element.classList.remove('has-time');
                     }
                     console.log('Widget updated:', { token, data });
                 } catch (error) {
                     console.error('Failed to update widget:', error);
-                    
+                    element.classList.remove('has-time');
+
                     const state = widgetStates.get(element);
                     if (state && attempt < retryAttempts) {
                         const delay = retryDelay(attempt);
@@ -155,7 +160,6 @@
 
                 // Set up polling for this widget
                 state.pollInterval = setInterval(() => updateWidget(element), pollingInterval);
-                console.log('Widget initialized with token:', token);
             }
 
             Array.from(widgets).forEach(initializeWidget);
