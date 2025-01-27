@@ -121,12 +121,11 @@
                     }
 
                     const data = await fetchWaitTime(token);
+                    element.classList.add('has-time');
                     if (data.waitTime) {
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
-                        element.classList.add('has-time');
                     } else {
                         element.textContent = 'closed';
-                        element.classList.remove('has-time');
                     }
                     console.log('Widget updated:', { token, data });
                 } catch (error) {
