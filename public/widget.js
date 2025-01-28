@@ -174,8 +174,8 @@
 
                     const data = await fetchWidgetData(token);
                     
+                    element.setAttribute('data-has-time', 'true');
                     if (data.waitTime && data.storeLink) {
-                        element.setAttribute('data-has-time', 'true');
                         element.href = data.storeLink;
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
                     } else {
