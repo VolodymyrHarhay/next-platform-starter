@@ -45,8 +45,7 @@
 
             const API_CONFIG = {
                 url: 'https://bb-ui.dev.sg.salondev.net/api/v1/Widget/Waittime/External',
-                method: 'GET',
-                mode: 'cors'
+                method: 'GET'
             };
 
             function cleanup() {
@@ -87,13 +86,11 @@
                         headers: headers
                     });
 
-                    const data = await response.json();
-
                     if (!response.ok) {
-                        const error = new Error('Failed to fetch wait time');
-                        error.response = data;
-                        throw error;
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
+
+                    const data = await response.json();
 
                     return {
                         waitTime: data.response?.waitTime
@@ -134,8 +131,6 @@
                     
                     if (error?.response?.userMessage) {
                         console.error('Failed to update widget:', error.response.userMessage);
-                    } else {
-                        console.error('Failed to update widget:', error);
                     }
 
                     const state = widgetStates.get(element);
