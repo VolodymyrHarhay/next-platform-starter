@@ -44,8 +44,9 @@
             const widgetStates = new Map();
 
             const API_CONFIG = {
-                url: 'https://bb-ui.dev.sg.salondev.net/api/v1/Widget/External/WaitTime',
-                method: 'GET'
+                url: 'https://bb-ui.dev.sg.salondev.net/api/v1/Widget/External/Waittime',
+                method: 'GET',
+                mode: 'cors'
             };
 
             function cleanup() {
