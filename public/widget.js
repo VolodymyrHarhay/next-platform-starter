@@ -7,9 +7,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: fit-content;
             min-height: 35px;
-            min-width: 100px;
+            min-width: 120px;
             text-decoration: none;
             cursor: pointer;
         }
@@ -21,23 +20,9 @@
             border: 1px solid #000000;
             border-radius: 30px;
             transition: all 0.2s ease;
-            position: relative;
-            min-width: 120px;
         }
         [data-widget="wait-time"][data-has-time="true"]:hover {
             background-color: #f5f5f5;
-        }
-        [data-widget="wait-time"] a {
-            color: inherit;
-            text-decoration: none;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: absolute;
-            width: 100%;
-            height: 100%;
         }
     `;
 
@@ -191,20 +176,15 @@
                     
                     if (data.waitTime && data.storeLink) {
                         element.setAttribute('data-has-time', 'true');
-                        const waitTimeText = `${formatWaitTime(data.waitTime)} wait`;
-                        
-                        element.textContent = '';
-                        const link = document.createElement('a');
-                        link.href = data.storeLink;
-                        link.target = '_blank';
-                        link.rel = 'noopener noreferrer';
-                        link.textContent = waitTimeText;
-                        element.appendChild(link);
+                        element.href = data.storeLink;
+                        element.textContent = `${formatWaitTime(data.waitTime)} wait`;
                     } else {
+                        element.removeAttribute('href');
                         element.textContent = 'Closed';
                     }
                 } catch (error) {
                     element.removeAttribute('data-has-time');
+                    element.removeAttribute('href');
                     
                     if (error?.response?.userMessage) {
                         console.error('Failed to update widget:', error.response.userMessage);
@@ -217,6 +197,8 @@
                         state.retryTimeout = setTimeout(() => {
                             updateWidget(element, attempt + 1);
                         }, delay);
+                    } else if (state?.pollInterval) {
+                        clearInterval(state.pollInterval);
                     }
                 }
             }
