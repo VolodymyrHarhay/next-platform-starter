@@ -3,7 +3,7 @@
 
     // Inject CSS styles
     const styles = `
-        .waitTimeWidget {
+        [data-widget="wait-time"] {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -11,7 +11,7 @@
             min-height: 35px;
             min-width: 100px;
         }
-        .waitTimeWidget.has-time {
+        [data-widget="wait-time"][data-has-time="true"] {
             color: #000000;
             font-size: 16px;
             padding: 5px 20px;
@@ -28,7 +28,7 @@
     // Auto-initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
         function init() {
-            const widgets = document.getElementsByClassName('waitTimeWidget');
+            const widgets = document.querySelectorAll('[data-widget="wait-time"]');
             
             if (!widgets.length) {
                 console.error('No wait time widgets found');
@@ -76,27 +76,31 @@
             }
 
             async function fetchWaitTime(token) {
-                const headers = {
-                    'Accept': 'application/json',
-                    'X-BookedBy-Widget-Context': token
-                };
+                try {
+                    const headers = {
+                        'Accept': 'application/json',
+                        'X-BookedBy-Widget-Context': token
+                    };
 
-                const response = await fetch(API_CONFIG.url, {
-                    method: API_CONFIG.method,
-                    headers: headers
-                });
+                    const response = await fetch(API_CONFIG.url, {
+                        method: API_CONFIG.method,
+                        headers: headers
+                    });
 
-                const data = await response.json();
+                    const data = await response.json();
 
-                if (!response.ok) {
-                    const error = new Error('Failed to fetch wait time');
-                    error.response = data;
+                    if (!response.ok) {
+                        const error = new Error('Failed to fetch wait time');
+                        error.response = data;
+                        throw error;
+                    }
+
+                    return {
+                        waitTime: data.response?.waitTime
+                    };
+                } catch (error) {
                     throw error;
                 }
-
-                return {
-                    waitTime: data.response?.waitTime
-                };
             }
 
             async function updateWidget(element, attempt = 1) {
@@ -111,22 +115,23 @@
                         return;
                     }
 
-                    const token = element.dataset.token;
+                    const token = element.getAttribute('data-token');
                     if (!token) {
                         console.error('Widget token not found');
-                        element.classList.remove('has-time');
+                        element.removeAttribute('data-has-time');
                         return;
                     }
 
                     const data = await fetchWaitTime(token);
-                    element.classList.add('has-time');
                     if (data.waitTime) {
+                        element.setAttribute('data-has-time', 'true');
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
                     } else {
+                        element.removeAttribute('data-has-time');
                         element.textContent = 'closed';
                     }
                 } catch (error) {
-                    element.classList.remove('has-time');
+                    element.removeAttribute('data-has-time');
                     
                     if (error?.response?.userMessage) {
                         console.error('Failed to update widget:', error.response.userMessage);
@@ -146,7 +151,7 @@
             }
 
             function initializeWidget(element) {
-                const token = element.dataset.token;
+                const token = element.getAttribute('data-token');
                 if (!token) {
                     console.error('Widget token not found');
                     return;
@@ -164,7 +169,7 @@
                 state.pollInterval = setInterval(() => updateWidget(element), pollingInterval);
             }
 
-            Array.from(widgets).forEach(initializeWidget);
+            widgets.forEach(initializeWidget);
 
             window.addEventListener('unload', cleanup);
             window.addEventListener('beforeunload', cleanup);
