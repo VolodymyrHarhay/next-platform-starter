@@ -45,7 +45,8 @@
 
             const API_CONFIG = {
                 url: 'https://bb-ui.dev.sg.salondev.net/api/v1/Widget/Waittime/External',
-                method: 'GET'
+                method: 'GET',
+                mode: 'cors'
             };
 
             function cleanup() {
