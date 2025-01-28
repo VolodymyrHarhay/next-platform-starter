@@ -10,7 +10,6 @@
             min-height: 35px;
             min-width: 120px;
             text-decoration: none;
-            cursor: pointer;
         }
         [data-widget="wait-time"][data-has-time="true"] {
             color: #000000;
@@ -21,7 +20,10 @@
             border-radius: 30px;
             transition: all 0.2s ease;
         }
-        [data-widget="wait-time"][data-has-time="true"]:hover {
+        [data-widget="wait-time"][data-has-time="true"][data-clickable="true"] {
+            cursor: pointer;
+        }
+        [data-widget="wait-time"][data-has-time="true"][data-clickable="true"]:hover {
             background-color: #f5f5f5;
         }
     `;
@@ -169,6 +171,7 @@
                     if (!token) {
                         console.error('Widget token not found');
                         element.removeAttribute('data-has-time');
+                        element.removeAttribute('data-clickable');
                         return;
                     }
 
@@ -176,14 +179,17 @@
                     
                     element.setAttribute('data-has-time', 'true');
                     if (data.waitTime && data.storeLink) {
+                        element.setAttribute('data-clickable', 'true');
                         element.href = data.storeLink;
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
                     } else {
+                        element.removeAttribute('data-clickable');
                         element.removeAttribute('href');
-                        element.textContent = 'Closed';
+                        element.textContent = data.waitTime ? `${formatWaitTime(data.waitTime)} wait` : 'Closed';
                     }
                 } catch (error) {
                     element.removeAttribute('data-has-time');
+                    element.removeAttribute('data-clickable');
                     element.removeAttribute('href');
                     
                     if (error?.response?.userMessage) {
