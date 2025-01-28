@@ -123,12 +123,11 @@
                     }
 
                     const data = await fetchWaitTime(token);
+                    element.setAttribute('data-has-time', 'true');
                     if (data.waitTime) {
-                        element.setAttribute('data-has-time', 'true');
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
                     } else {
-                        element.removeAttribute('data-has-time');
-                        element.textContent = 'closed';
+                        element.textContent = 'Closed';
                     }
                 } catch (error) {
                     element.removeAttribute('data-has-time');
