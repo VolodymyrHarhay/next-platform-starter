@@ -7,14 +7,13 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 35px;
-            min-width: 120px;
+            height: 35px;
+            width: 120px;
             text-decoration: none;
         }
         [data-widget="wait-time"][data-has-time="true"] {
             color: #000000;
             font-size: 16px;
-            padding: 5px 20px;
             background-color: #FFFFFF;
             border: 1px solid #000000;
             border-radius: 30px;
