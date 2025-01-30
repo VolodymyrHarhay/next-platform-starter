@@ -496,7 +496,13 @@
                     }
 
                     const data = await fetchWidgetData(token);
-                    const { waitTime: { waitTime, existsAvailableProvider, reason }, schedule: { weeklySchedule, scheduleExceptions }, storeTimeZone, operatingMode, bookingGroupOperationMode } = data.waitTimeData;
+                    const { 
+                        waitTime: { waitTime, existsAvailableProvider, reason }, 
+                        schedule: { weeklySchedule, scheduleExceptions }, 
+                        storeTimeZone, 
+                        operatingMode,
+                        bookingGroupOperationMode
+                    } = data.waitTimeData;
 
                     const currentDate = getCurrentDate(storeTimeZone);
                     const currentTime = getCurrentTime(storeTimeZone);
@@ -530,6 +536,13 @@
                         if (!statusString) {
                             cleanupWidgetAttributes(element);
                         }
+                        element.textContent = statusString;
+                        return;
+                    }
+
+                    // do we need it?
+                    const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
+                    if (statusString) {
                         element.textContent = statusString;
                         return;
                     }
