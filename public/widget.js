@@ -1,6 +1,20 @@
 (function() {
     if (typeof window === 'undefined') return;
 
+    // Load Luxon Duration and DateTime
+    let Duration, DateTime;
+    const luxonLoaded = (async function loadLuxon() {
+        try {
+            const { Duration: LuxonDuration, DateTime: LuxonDateTime } = await import('https://cdn.skypack.dev/luxon?dts');
+            Duration = LuxonDuration;
+            DateTime = LuxonDateTime;
+            return true;
+        } catch (error) {
+            console.error('Failed to load Luxon:', error);
+            return false;
+        }
+    })();
+
     // Inject CSS styles
     const styles = `
         [data-widget="wait-time"] {
@@ -32,8 +46,12 @@
     document.head.appendChild(styleSheet);
 
     // Auto-initialize when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Wait for Luxon to load before initializing
+        await luxonLoaded;
+        
         function init() {
+            console.log('Widget init', {Duration, DateTime});
             const widgets = document.querySelectorAll('[data-widget="wait-time"]');
             
             if (!widgets.length) {
@@ -78,7 +96,6 @@
 
             function formatWaitTime(timeString) {
                 if (!timeString) return '';
-                
                 const [hours, minutes] = timeString.split(':').map(Number);
                 const totalMinutes = hours * 60 + minutes;
 
@@ -114,6 +131,15 @@
             }
 
             async function fetchWaitTime(token) {
+                // // Mock response
+                // return new Promise((resolve) => {
+                //     setTimeout(() => {
+                //         resolve({
+                //             waitTime: "00:00:04"
+                //         });
+                //     }, 100);
+                // });
+                
                 try {
                     const headers = {
                         'Accept': 'application/json',
@@ -131,7 +157,7 @@
 
                     const data = await response.json();
                     return {
-                        waitTime: data.response?.waitTime
+                        waitTime: data.response?.waitTime?.waitTime
                     };
                 } catch (error) {
                     throw error;
@@ -140,14 +166,19 @@
 
             async function fetchWidgetData(token) {
                 try {
-                    const [waitTimeData, storeLinkData] = await Promise.all([
-                        fetchWaitTime(token),
-                        fetchStoreLink(token)
-                    ]);
+                    const waitTimeData = await fetchWaitTime(token);
+                    
+                    let storeLink = null;
+                    try {
+                        const storeLinkData = await fetchStoreLink(token);
+                        storeLink = storeLinkData.storeLink;
+                    } catch (error) {
+                        console.error('Failed to fetch store link:', error);
+                    }
 
                     return {
                         waitTime: waitTimeData.waitTime,
-                        storeLink: storeLinkData.storeLink
+                        storeLink: storeLink
                     };
                 } catch (error) {
                     throw error;
@@ -176,20 +207,27 @@
 
                     const data = await fetchWidgetData(token);
                     
-                    element.setAttribute('data-has-time', 'true');
-                    if (data.waitTime && data.storeLink) {
-                        element.setAttribute('data-clickable', 'true');
-                        element.href = data.storeLink;
+                    if (data.waitTime) {
+                        element.setAttribute('data-has-time', 'true');
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
+                        
+                        if (data.storeLink) {
+                            element.setAttribute('data-clickable', 'true');
+                            element.href = data.storeLink;
+                        } else {
+                            element.removeAttribute('data-clickable');
+                            element.removeAttribute('href');
+                        }
                     } else {
                         element.removeAttribute('data-clickable');
                         element.removeAttribute('href');
-                        element.textContent = data.waitTime ? `${formatWaitTime(data.waitTime)} wait` : 'Closed';
+                        element.textContent = 'Closed';
                     }
                 } catch (error) {
                     element.removeAttribute('data-has-time');
                     element.removeAttribute('data-clickable');
                     element.removeAttribute('href');
+                    element.textContent = '';
                     
                     if (error?.response?.userMessage) {
                         console.error('Failed to update widget:', error.response.userMessage);
