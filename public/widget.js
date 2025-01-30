@@ -32,9 +32,7 @@
             border: 1px solid #000000;
             border-radius: 30px;
             transition: all 0.2s ease;
-        }
-        [data-widget="wait-time"][data-has-time="true"][data-clickable="true"] {
-            cursor: pointer;
+            cursor: default;
         }
         [data-widget="wait-time"][data-has-time="true"][data-clickable="true"]:hover {
             background-color: #f5f5f5;
@@ -206,9 +204,8 @@
                     }
 
                     const data = await fetchWidgetData(token);
-                    
+                    element.setAttribute('data-has-time', 'true');
                     if (data.waitTime) {
-                        element.setAttribute('data-has-time', 'true');
                         element.textContent = `${formatWaitTime(data.waitTime)} wait`;
                         
                         if (data.storeLink) {
@@ -219,8 +216,6 @@
                             element.removeAttribute('href');
                         }
                     } else {
-                        element.removeAttribute('data-clickable');
-                        element.removeAttribute('href');
                         element.textContent = 'Closed';
                     }
                 } catch (error) {
