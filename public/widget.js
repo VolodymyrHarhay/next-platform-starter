@@ -34,6 +34,9 @@
             transition: all 0.2s ease;
             cursor: default;
         }
+        [data-widget="wait-time"][data-has-time="true"][data-clickable="true"] {
+            cursor: pointer;
+        }
         [data-widget="wait-time"][data-has-time="true"][data-clickable="true"]:hover {
             background-color: #f5f5f5;
         }
