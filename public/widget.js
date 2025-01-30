@@ -10,6 +10,7 @@
             height: 35px;
             width: 135px;
             text-decoration: none;
+            cursor: default;
         }
         [data-widget="wait-time"][data-has-time="true"] {
             color: #000000;
@@ -542,6 +543,7 @@
 
                     // do we need it?
                     const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
+                    console.log({statusString});
                     if (statusString) {
                         element.textContent = statusString;
                         return;
