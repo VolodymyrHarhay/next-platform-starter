@@ -219,6 +219,12 @@
         };
     }
 
+    function cleanupWidgetAttributes(element) {
+        element.removeAttribute('data-has-time');
+        element.removeAttribute('data-clickable');
+        element.removeAttribute('href');
+    }
+
     // Auto-initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', async function() {
         function init() {
@@ -485,15 +491,12 @@
                     const token = element.getAttribute('data-token');
                     if (!token) {
                         console.error('Widget token not found');
-                        element.removeAttribute('data-has-time');
-                        element.removeAttribute('data-clickable');
+                        cleanupWidgetAttributes(element);
                         return;
                     }
 
                     const data = await fetchWidgetData(token);
-                    console.log({data});
                     const { waitTime: { waitTime, existsAvailableProvider, reason }, schedule: { weeklySchedule, scheduleExceptions }, storeTimeZone, operatingMode, bookingGroupOperationMode } = data.waitTimeData;
-                    console.log({data});
 
                     const currentDate = getCurrentDate(storeTimeZone);
                     const currentTime = getCurrentTime(storeTimeZone);
@@ -525,10 +528,8 @@
                     if (isCheckinOnly) {
                         const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
                         if (!statusString) {
-                            element.removeAttribute('data-has-time');
-                            element.removeAttribute('data-clickable');
-                            element.removeAttribute('href');
-                        };
+                            cleanupWidgetAttributes(element);
+                        }
                         element.textContent = statusString;
                         return;
                     }
@@ -538,12 +539,11 @@
 
                     if (checkinAllowed && waitTime) {
                         element.textContent = `${formatWaitTime(waitTime)} wait`;
-                        return;
+                    } else {
+                        cleanupWidgetAttributes(element);
                     }
                 } catch (error) {
-                    element.removeAttribute('data-has-time');
-                    element.removeAttribute('data-clickable');
-                    element.removeAttribute('href');
+                    cleanupWidgetAttributes(element);
                     element.textContent = '';
                     
                     if (error?.response?.userMessage) {
