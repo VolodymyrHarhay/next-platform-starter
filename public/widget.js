@@ -1,9 +1,8 @@
 (function() {
     if (typeof window === 'undefined') return;
 
-    // Inject CSS styles
     const styles = `
-        [data-widget="wait-time"] {
+        [data-widget="wait-time"][data-use-default-styles="true"] {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -12,7 +11,7 @@
             text-decoration: none;
             cursor: default;
         }
-        [data-widget="wait-time"][data-has-time="true"] {
+        [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"] {
             color: #000000;
             font-size: 16px;
             background-color: #FFFFFF;
@@ -21,22 +20,32 @@
             transition: all 0.2s ease;
             cursor: default;
         }
-        [data-widget="wait-time"][data-has-time="true"][data-clickable="true"] {
+        [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"][data-clickable="true"] {
             cursor: pointer;
         }
-        [data-widget="wait-time"][data-has-time="true"][data-clickable="true"]:hover {
+        [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"][data-clickable="true"]:hover {
             background-color: #f5f5f5;
         }
     `;
-    const styleSheet = document.createElement("style");
-    styleSheet.textContent = styles;
-    document.head.appendChild(styleSheet);
+
+    // Only inject styles if there's at least one widget using default styles
+    const widgets = document.querySelectorAll('[data-widget="wait-time"]');
+    const hasDefaultStylesWidget = Array.from(widgets).some(widget => 
+        widget.getAttribute('data-use-default-styles') !== 'false'
+    );
+
+    if (hasDefaultStylesWidget) {
+        const styleSheet = document.createElement("style");
+        styleSheet.textContent = styles;
+        document.head.appendChild(styleSheet);
+    }
 
     const OperationModeBitFlag = {
         Checkin: 1,
         Booking: 2
       };
 
+    // helper functions start
     function getOperationModeStatus(operatingMode, bookingGroupOperationMode) {
         const isBookingGroupAllowed = Boolean((bookingGroupOperationMode || 0) & OperationModeBitFlag.Booking);
         const isCheckinGroupAllowed = Boolean((bookingGroupOperationMode || 0) & OperationModeBitFlag.Checkin);
@@ -49,10 +58,8 @@
     }
 
     function getCurrentDate(timezone = 'America/Los_Angeles') {
-        // Create a date object for current time
         const date = new Date();
         
-        // Get the date parts in the specified timezone
         const formatter = new Intl.DateTimeFormat('en-US', {
             timeZone: timezone,
             year: 'numeric',
@@ -60,11 +67,9 @@
             day: '2-digit'
         });
 
-        // Get date parts
         const parts = formatter.formatToParts(date);
         const dateParts = {};
         
-        // Extract values from parts
         parts.forEach(part => {
             if (part.type !== 'literal') {
                 dateParts[part.type] = part.value;
@@ -106,14 +111,11 @@
     function getCurrentWeekday(timezone = 'America/Los_Angeles') {
         const date = new Date();
         
-        // Get the date in the specified timezone
         const formatter = new Intl.DateTimeFormat('en-US', {
             timeZone: timezone,
         });
 
         const utcDate = new Date(formatter.format(date));
-        // getDay() returns 0-6 (Sunday-Saturday)
-        // We need to convert it to 1-7 (Monday-Sunday)
         const day = utcDate.getDay();
         return day === 0 ? 7 : day; // Convert Sunday from 0 to 7
     }
@@ -195,17 +197,14 @@
 
         // Check if closing soon (within 1 hour)
         const closingSoon = workingInterval && 
-            (timeToSeconds(workingInterval.end) - currentTimeSeconds <= 3600); // 3600 seconds = 1 hour
+            (timeToSeconds(workingInterval.end) - currentTimeSeconds <= 3600);
 
-        // Check if on break between intervals
         const onBreak = intervals.length === 2 && 
             currentTimeSeconds >= timeToSeconds(intervals[0].end) && 
             currentTimeSeconds <= timeToSeconds(intervals[1].start);
 
-        // Check if closed for the entire day
         const closedAtDate = intervals.length === 0;
 
-        // Check if already closed for the day
         const closedAlready = intervals.length > 0 && 
             currentTimeSeconds > timeToSeconds(intervals[intervals.length - 1].end);
 
@@ -225,6 +224,7 @@
         element.removeAttribute('data-clickable');
         element.removeAttribute('href');
     }
+    // helper functions end
 
     // Auto-initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', async function() {
@@ -272,141 +272,6 @@
             }
 
             async function fetchWaitTime(token) {
-                // Mock response
-                // return new Promise((resolve) => {
-                //     setTimeout(() => {
-                //         resolve({
-                //             response: {
-                //                 waitTime: {
-                //                     waitTime: "01:10:01",
-                //                     reason: 6,
-                //                     queuePosition: null,
-                //                     queueLength: 0,
-                //                     lastEstimatedAt: null,
-                //                     estimatedServiceTime: null,
-                //                     waitTimeGeneratedAt: "10:39:12.2241710",
-                //                     expectedServiceStartTime: "10:39:12.8489823",
-                //                     existsAvailableProvider: false
-                //                 },
-                //                 schedule: {
-                //                     uid: "c3807cf5-05e8-4b4d-96c9-dc8e78a505f4",
-                //                     weeklySchedule: [
-                //                         {
-                //                             weekday: 5,
-                //                             fromTime1: "05:10:00",
-                //                             toTime1: "22:00:00",
-                //                             fromTime2: null,
-                //                             toTime2: null,
-                //                             isException: false,
-                //                             exceptionReason: null,
-                //                             uid: "09956d3f-1cb0-1cdb-900e-d0aa5bab255a",
-                //                             isDeleted: false,
-                //                             createdDate: "2019-09-11T10:41:37.108702",
-                //                             updatedDate: "2025-01-24T14:55:11.581968"
-                //                         },
-                //                         {
-                //                             weekday: 7,
-                //                             fromTime1: null,
-                //                             toTime1: null,
-                //                             fromTime2: null,
-                //                             toTime2: null,
-                //                             isException: false,
-                //                             exceptionReason: null,
-                //                             uid: "2189ca4d-715d-3ed4-8d27-ad18255f814b",
-                //                             isDeleted: false,
-                //                             createdDate: "2019-09-11T10:41:37.112114",
-                //                             updatedDate: "2025-01-24T14:55:11.593526"
-                //                         },
-                //                         {
-                //                             weekday: 2,
-                //                             fromTime1: "05:00:00",
-                //                             toTime1: "17:30:00",
-                //                             fromTime2: null,
-                //                             toTime2: null,
-                //                             isException: false,
-                //                             exceptionReason: null,
-                //                             uid: "fe64c59f-ba24-b5b8-270b-298620e0b9f9",
-                //                             isDeleted: false,
-                //                             createdDate: "2019-09-11T10:41:37.16743",
-                //                             updatedDate: "2025-01-24T14:55:11.570252"
-                //                         },
-                //                         {
-                //                             weekday: 3,
-                //                             fromTime1: "05:00:00",
-                //                             toTime1: "23:40:00",
-                //                             fromTime2: null,
-                //                             toTime2: null,
-                //                             isException: false,
-                //                             exceptionReason: null,
-                //                             uid: "e6a83e55-7e7e-b1ab-9e48-08457520ab9d",
-                //                             isDeleted: false,
-                //                             createdDate: "2019-09-11T10:41:37.170352",
-                //                             updatedDate: "2025-01-24T14:55:11.573148"
-                //                         },
-                //                         {
-                //                             weekday: 4,
-                //                             fromTime1: "05:00:00",
-                //                             toTime1: "23:45:00",
-                //                             fromTime2: null,
-                //                             toTime2: null,
-                //                             isException: false,
-                //                             exceptionReason: null,
-                //                             uid: "d75d6e24-39a9-4c8d-713e-fab4c271827a",
-                //                             isDeleted: false,
-                //                             createdDate: "2019-09-11T10:41:37.173297",
-                //                             updatedDate: "2025-01-24T14:55:11.578038"
-                //                         },
-                //                         {
-                //                             weekday: 6,
-                //                             fromTime1: null,
-                //                             toTime1: null,
-                //                             fromTime2: null,
-                //                             toTime2: null,
-                //                             isException: false,
-                //                             exceptionReason: null,
-                //                             uid: "d3761c99-3ea8-6b72-bbcf-8304ce51342a",
-                //                             isDeleted: false,
-                //                             createdDate: "2019-09-11T10:41:37.177031",
-                //                             updatedDate: "2025-01-24T14:55:11.589682"
-                //                         },
-                //                         {
-                //                             weekday: 1,
-                //                             fromTime1: "06:00:00",
-                //                             toTime1: "18:00:00",
-                //                             fromTime2: null,
-                //                             toTime2: null,
-                //                             isException: false,
-                //                             exceptionReason: null,
-                //                             uid: "7f4caafd-21b4-1e21-655b-8adee7efbcbc",
-                //                             isDeleted: false,
-                //                             createdDate: "2019-09-11T10:41:37.164252",
-                //                             updatedDate: "2025-01-24T14:55:11.566727"
-                //                         }
-                //                     ],
-                //                     // scheduleExceptions: [
-                //                     //     {
-                //                     //         date: "2025-01-30T00:00:00",
-                //                     //         weekday: 1,
-                //                     //         fromTime1: null,
-                //                     //         toTime1: null,
-                //                     //         fromTime2: null,
-                //                     //         toTime2: null,
-                //                     //         isException: true,
-                //                     //         exceptionReason: "take off",
-                //                     //         uid: "46749e9f-855f-4003-be40-0660f523e50a",
-                //                     //         isDeleted: false,
-                //                     //         createdDate: "2025-01-30T11:28:15.345743",
-                //                     //         updatedDate: "2025-01-30T11:28:15.345743"
-                //                     //     }
-                //                     // ]
-                //                 },
-                //                 storeTimeZone: "America/Chicago",
-                //                 operatingMode: 3,
-                //                 bookingGroupOperationMode: 3
-                //             }
-                //         });
-                //     }, 100);
-                // });
 
                 try {
                     const headers = {
@@ -541,7 +406,7 @@
                         return;
                     }
 
-                    // do we need it?
+                    // TODO: do we need it?
                     const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
                     console.log({statusString});
                     if (statusString) {
