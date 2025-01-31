@@ -133,7 +133,6 @@
     }
 
     function formatWaitTime(timeString) {
-        console.log('Formatting time:', timeString);
         if (!timeString) return '';
         const [hours, minutes] = timeString.split(':').map(Number);
         const totalMinutes = hours * 60 + minutes;
@@ -219,6 +218,35 @@
         };
     }
 
+    async function retryAsync(fn, callName = 'API Call') {
+        const retries = 3;
+        const initialDelay = 1000;
+        const factor = 2;
+        
+        let attempt = 0;
+        let delay = initialDelay;
+    
+        while (attempt < retries) {
+            try {
+                return await fn();
+            } catch (error) {
+                attempt++;
+                console.warn(`${callName} - Attempt ${attempt} failed: ${error.message}`);
+                if (attempt >= retries) {
+                    console.error(`${callName} failed after ${retries} attempts.`);
+                    throw error;
+                }
+    
+                // Log retry with exponential backoff
+                console.log(`${callName} - Retrying in ${delay}ms...`);
+                await new Promise(res => setTimeout(res, delay));
+                delay *= factor; // Double the delay with each retry
+            }
+        }
+    }
+    
+    
+
     function cleanupWidgetAttributes(element) {
         element.removeAttribute('data-has-time');
         element.removeAttribute('data-clickable');
@@ -237,9 +265,6 @@
             }
 
             const pollingInterval = 60000;
-            const retryAttempts = 3;
-            const baseDelay = 5000;
-            const retryDelay = (attempt) => Math.min(baseDelay * 2 ** (attempt - 1), 30000);
             
             // Track intervals and timeouts for each widget
             const widgetStates = new Map();
@@ -262,9 +287,6 @@
                     if (state.pollInterval) {
                         clearInterval(state.pollInterval);
                     }
-                    if (state.retryTimeout) {
-                        clearTimeout(state.retryTimeout);
-                    }
                 }
                 widgetStates.clear();
                 window.removeEventListener('unload', cleanup);
@@ -272,83 +294,79 @@
             }
 
             async function fetchWaitTime(token) {
-
-                try {
+                return retryAsync(async () => {
                     const headers = {
-                        'Accept': 'application/json',
-                        'X-BookedBy-Widget-Context': token
+                        "Accept": "application/json",
+                        "X-BookedBy-Widget-Context": token
                     };
-
+            
                     const response = await fetch(API_CONFIG.waitTime.url, {
                         method: API_CONFIG.waitTime.method,
                         headers: headers
                     });
-
+            
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-
+            
                     const data = await response.json();
                     return data.response;
-
-                } catch (error) {
-                    throw error;
-                }
+                }, 'Fetch Wait Time');
             }
-
+            
             async function fetchStoreLink(token) {
-                try {
+                return retryAsync(async () => {
                     const headers = {
-                        'Accept': 'application/json',
-                        'X-BookedBy-Widget-Context': token
+                        "Accept": "application/json",
+                        "X-BookedBy-Widget-Context": token
                     };
-        
+            
                     const response = await fetch(API_CONFIG.storeLink.url, {
                         method: API_CONFIG.storeLink.method,
                         headers: headers
                     });
-        
+            
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-        
+            
                     const data = await response.json();
-                    return {
-                        storeLink: data.response
-                    };
-                } catch (error) {
-                    throw error;
-                }
+                    return { storeLink: data.response };
+                }, 'Fetch Store Link');
             }
 
             async function fetchWidgetData(token) {
+                let waitTimeData = null;
                 try {
-                    const waitTimeData = await fetchWaitTime(token);
-                    
-                    let storeLink = null;
+                    waitTimeData = await fetchWaitTime(token);
+                } catch (error) {
+                    console.error('Failed to fetch wait time:', error);
+                }
+            
+                let storeLink = null;
+                // Only fetch the store link if wait time data is available
+                if (waitTimeData !== null) {
                     try {
                         const storeLinkData = await fetchStoreLink(token);
                         storeLink = storeLinkData.storeLink;
                     } catch (error) {
                         console.error('Failed to fetch store link:', error);
                     }
-
-                    return {
-                        waitTimeData,
-                        storeLink
-                    };
-                } catch (error) {
-                    throw error;
                 }
+            
+                return {
+                    waitTimeData,
+                    storeLink
+                };
             }
+            
 
-            async function updateWidget(element, attempt = 1) {
+            async function updateWidget(element) {
                 try {
                     if (!document.body.contains(element)) {
                         const state = widgetStates.get(element);
                         if (state) {
                             if (state.pollInterval) clearInterval(state.pollInterval);
-                            if (state.retryTimeout) clearTimeout(state.retryTimeout);
                             widgetStates.delete(element);
                         }
                         return;
@@ -362,6 +380,7 @@
                     }
 
                     const data = await fetchWidgetData(token);
+                    if (!data.waitTimeData) return;
                     const { 
                         waitTime: { waitTime, existsAvailableProvider, reason }, 
                         schedule: { weeklySchedule, scheduleExceptions }, 
@@ -425,23 +444,25 @@
                 } catch (error) {
                     cleanupWidgetAttributes(element);
                     element.textContent = '';
-                    
-                    if (error?.response?.userMessage) {
-                        console.error('Failed to update widget:', error.response.userMessage);
-                    } else {
-                        console.error('Failed to update widget:', error);
-                    }
 
-                    const state = widgetStates.get(element);
-                    if (state && attempt < retryAttempts) {
-                        const delay = retryDelay(attempt);
-                        console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${retryAttempts})`);
-                        state.retryTimeout = setTimeout(() => {
-                            updateWidget(element, attempt + 1);
-                        }, delay);
-                    } else if (state?.pollInterval) {
-                        clearInterval(state.pollInterval);
-                    }
+                    console.error(`Unexpected error in updateWidget: ${error.message}`, error);
+                    
+                    // if (error?.response?.userMessage) {
+                    //     console.error('Failed to update widget:', error.response.userMessage);
+                    // } else {
+                    //     console.error('Failed to update widget:', error);
+                    // }
+
+                    // const state = widgetStates.get(element);
+                    // if (state && attempt < retryAttempts) {
+                    //     const delay = retryDelay(attempt);
+                    //     console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${retryAttempts})`);
+                    //     state.retryTimeout = setTimeout(() => {
+                    //         updateWidget(element, attempt + 1);
+                    //     }, delay);
+                    // } else if (state?.pollInterval) {
+                    //     clearInterval(state.pollInterval);
+                    // }
                 }
             }
 
@@ -453,8 +474,7 @@
                 }
 
                 const state = {
-                    pollInterval: null,
-                    retryTimeout: null
+                    pollInterval: null
                 };
                 widgetStates.set(element, state);
 
