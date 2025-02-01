@@ -28,18 +28,6 @@
         }
     `;
 
-    // Only inject styles if there's at least one widget using default styles
-    const widgets = document.querySelectorAll('[data-widget="wait-time"]');
-    const hasDefaultStylesWidget = Array.from(widgets).some(widget => 
-        widget.getAttribute('data-use-default-styles') !== 'false'
-    );
-
-    if (hasDefaultStylesWidget) {
-        const styleSheet = document.createElement("style");
-        styleSheet.textContent = styles;
-        document.head.appendChild(styleSheet);
-    }
-
     const OperationModeBitFlag = {
         Checkin: 1,
         Booking: 2
@@ -57,7 +45,7 @@
         };
     }
 
-    function getCurrentDate(timezone = 'America/Los_Angeles') {
+    function getCurrentDate(timezone = 'America/New_York') {
         const date = new Date();
         
         const formatter = new Intl.DateTimeFormat('en-US', {
@@ -169,7 +157,7 @@
         }
 
         if (isOpen && !existsAvailableProvider) {
-            return 'Call store';
+            return 'Unavailable';
           }
 
         return '';
@@ -245,8 +233,6 @@
         }
     }
     
-    
-
     function cleanupWidgetAttributes(element) {
         element.removeAttribute('data-has-time');
         element.removeAttribute('data-clickable');
@@ -258,16 +244,24 @@
     document.addEventListener('DOMContentLoaded', async function() {
         function init() {
             const widgets = document.querySelectorAll('[data-widget="wait-time"]');
-            
+
             if (!widgets.length) {
                 console.error('No wait time widgets found');
                 return;
             }
 
+            const hasDefaultStylesWidget = Array.from(widgets).some(widget => 
+                widget.getAttribute('data-use-default-styles') !== 'false'
+            );
+        
+            // Only inject styles if there's at least one widget using default styles
+            if (hasDefaultStylesWidget) {
+                const styleSheet = document.createElement("style");
+                styleSheet.textContent = styles;
+                document.head.appendChild(styleSheet);
+            }
+
             const pollingInterval = 60000;
-            
-            // Track intervals and timeouts for each widget
-            const widgetStates = new Map();
 
             const API_CONFIG = {
                 waitTime: {
@@ -281,17 +275,6 @@
                     mode: 'cors'
                 }
             };
-
-            function cleanup() {
-                for (const [, state] of widgetStates) {
-                    if (state.pollInterval) {
-                        clearInterval(state.pollInterval);
-                    }
-                }
-                widgetStates.clear();
-                window.removeEventListener('unload', cleanup);
-                window.removeEventListener('beforeunload', cleanup);
-            }
 
             async function fetchWaitTime(token) {
                 return retryAsync(async () => {
@@ -361,26 +344,11 @@
             }
             
 
-            async function updateWidget(element) {
+            async function updateWidget(element, token) {
                 try {
-                    if (!document.body.contains(element)) {
-                        const state = widgetStates.get(element);
-                        if (state) {
-                            if (state.pollInterval) clearInterval(state.pollInterval);
-                            widgetStates.delete(element);
-                        }
-                        return;
-                    }
-
-                    const token = element.getAttribute('data-token');
-                    if (!token) {
-                        console.error('Widget token not found');
-                        cleanupWidgetAttributes(element);
-                        return;
-                    }
-
                     const data = await fetchWidgetData(token);
                     if (!data.waitTimeData) return;
+
                     const { 
                         waitTime: { waitTime, existsAvailableProvider, reason }, 
                         schedule: { weeklySchedule, scheduleExceptions }, 
@@ -403,8 +371,6 @@
                     ].filter((item) => !!item.start && !!item.end);
 
                     const storeScheduleMetadata = getStoreScheduleMetadata(intervals, currentTime);
-                    
-
                     element.setAttribute('data-has-time', 'true');
                     if (data.storeLink) {
                         element.setAttribute('data-clickable', 'true');
@@ -426,12 +392,12 @@
                     }
 
                     // TODO: do we need it?
-                    const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
-                    console.log({statusString});
-                    if (statusString) {
-                        element.textContent = statusString;
-                        return;
-                    }
+                    // const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
+                    // console.log({statusString});
+                    // if (statusString) {
+                    //     element.textContent = statusString;
+                    //     return;
+                    // }
 
                     const availableReason = 6;
                     const checkinAllowed = storeScheduleMetadata.isOpen && reason === availableReason;
@@ -452,42 +418,18 @@
                     // } else {
                     //     console.error('Failed to update widget:', error);
                     // }
-
-                    // const state = widgetStates.get(element);
-                    // if (state && attempt < retryAttempts) {
-                    //     const delay = retryDelay(attempt);
-                    //     console.log(`Retrying in ${delay}ms (attempt ${attempt + 1}/${retryAttempts})`);
-                    //     state.retryTimeout = setTimeout(() => {
-                    //         updateWidget(element, attempt + 1);
-                    //     }, delay);
-                    // } else if (state?.pollInterval) {
-                    //     clearInterval(state.pollInterval);
-                    // }
                 }
             }
 
-            function initializeWidget(element) {
+            widgets.forEach(element => {
                 const token = element.getAttribute('data-token');
                 if (!token) {
                     console.error('Widget token not found');
                     return;
                 }
 
-                const state = {
-                    pollInterval: null
-                };
-                widgetStates.set(element, state);
-
-                updateWidget(element);
-
-                // Set up polling for this widget
-                state.pollInterval = setInterval(() => updateWidget(element), pollingInterval);
-            }
-
-            widgets.forEach(initializeWidget);
-
-            window.addEventListener('unload', cleanup);
-            window.addEventListener('beforeunload', cleanup);
+                updateWidget(element, token);
+            });
         }
 
         init();
