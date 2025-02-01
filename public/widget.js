@@ -261,8 +261,6 @@
                 document.head.appendChild(styleSheet);
             }
 
-            const pollingInterval = 60000;
-
             const API_CONFIG = {
                 waitTime: {
                     url: 'https://bb-ui.dev.sg.salondev.net/api/v1/Widget/External/Waittime',
