@@ -208,7 +208,7 @@
 
   async function retryAsync(fn, callName = 'API Call') {
     const retries = 3;
-    const initialDelay = 1000;
+    const initialDelay = 2000;
     const factor = 2;
 
     let attempt = 0;
@@ -225,10 +225,11 @@
           throw error;
         }
 
-        // Log retry with exponential backoff
-        console.log(`${callName} - Retrying in ${delay}ms...`);
-        await new Promise(res => setTimeout(res, delay));
-        delay *= factor; // Double the delay with each retry
+        // Add jitter (random variation) to avoid synchronized retries
+        const jitter = Math.random() * 200;
+        console.log(`${callName} - Retrying in ${delay + jitter}ms...`);
+        await new Promise(res => setTimeout(res, delay + jitter));
+        delay *= factor; // Exponential backoff
       }
     }
   }
@@ -249,21 +250,26 @@
         console.error('No wait time widgets found');
       }
 
-      const hasDefaultStylesWidget = Array.from(widgets).some(widget =>
-        widget.getAttribute('data-use-default-styles') !== 'false'
-      );
+      let stylesInjected = false;
 
-      // Only inject styles if there's at least one widget using default styles
-      if (hasDefaultStylesWidget) {
-        const styleSheet = document.createElement("style");
-        styleSheet.textContent = styles;
-        document.head.appendChild(styleSheet);
+      function injectStylesIfNeeded() {
+        const widgets = document.querySelectorAll('[data-widget="wait-time"]');
+        
+        const hasDefaultStylesWidget = Array.from(widgets).some(widget =>
+          widget.getAttribute('data-use-default-styles') !== 'false'
+        );
+      
+        if (hasDefaultStylesWidget && !stylesInjected) {
+          console.log('Injecting styles');
+          const styleSheet = document.createElement("style");
+          styleSheet.textContent = styles;
+          document.head.appendChild(styleSheet);
+          stylesInjected = true;
+        }
       }
 
-      // MutationObserver to observe changes in the DOM
       function observeDOMChanges() {
         const observer = new MutationObserver(mutationsList => {
-          // Check if any mutations added potential widgets
           const hasNewWidgets = mutationsList.some(mutation => {
             if (mutation.type === 'childList') {
               return Array.from(mutation.addedNodes).some(node => {
@@ -277,6 +283,8 @@
           });
 
           if (hasNewWidgets) {
+            injectStylesIfNeeded();
+
             const newWidgets = document.querySelectorAll('[data-widget="wait-time"]:not([data-initialized="true"])');
             newWidgets.forEach(widget => {
               const token = widget.getAttribute('data-token');
@@ -292,13 +300,11 @@
         const config = { childList: true, subtree: true };
         observer.observe(document.body, config);
 
-        // Add cleanup on page unload
         window.addEventListener('unload', () => {
           observer.disconnect();
         });
       }
 
-      // Initialize widgets for each element
       widgets.forEach(widget => {
         const token = widget.getAttribute('data-token');
         if (!token) {
@@ -309,7 +315,6 @@
         updateWidget(widget, token);
       });
 
-      // Start observing for new widgets
       observeDOMChanges()
 
       const API_CONFIG = {
@@ -393,7 +398,6 @@
       }
 
       async function updateWidget(element, token) {
-        // Skip updating if already initialized
         if (element.dataset.initialized === "true") return;
 
         try {
