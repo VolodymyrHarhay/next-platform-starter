@@ -241,6 +241,30 @@
   }
   // helper functions end
 
+  // Store intervals by widget element to clean them up later
+  const widgetPollingIntervals = new WeakMap();
+  let observer;
+
+  // Function to cleanup all intervals
+  function cleanupAllPollingIntervals() {
+    const widgets = document.querySelectorAll('[data-widget="wait-time"]');
+    widgets.forEach(widget => {
+      const interval = widgetPollingIntervals.get(widget);
+      if (interval) {
+        clearInterval(interval);
+        widgetPollingIntervals.delete(widget);
+      }
+    });
+  }
+
+  // Cleanup handler for page unload
+  window.addEventListener('unload', () => {
+    if (observer) {
+      observer.disconnect();
+    }
+    cleanupAllPollingIntervals();
+  });
+
   // Auto-initialize when DOM is ready
   document.addEventListener('DOMContentLoaded', async function () {
     function init() {
@@ -269,9 +293,29 @@
       }
 
       function observeDOMChanges() {
-        const observer = new MutationObserver(mutationsList => {
+        observer = new MutationObserver(mutationsList => {
           const hasNewWidgets = mutationsList.some(mutation => {
             if (mutation.type === 'childList') {
+              // Check for removed widgets to cleanup polling
+              if (mutation.removedNodes.length) {
+                Array.from(mutation.removedNodes).forEach(node => {
+                  if (node.nodeType === 1) {
+                    const widgets = node.matches('[data-widget="wait-time"]') ? 
+                      [node] : 
+                      Array.from(node.querySelectorAll('[data-widget="wait-time"]'));
+                    
+                    widgets.forEach(widget => {
+                      const interval = widgetPollingIntervals.get(widget);
+                      if (interval) {
+                        clearInterval(interval);
+                        widgetPollingIntervals.delete(widget);
+                        console.log('Cleaned up polling for removed widget');
+                      }
+                    });
+                  }
+                });
+              }
+
               return Array.from(mutation.addedNodes).some(node => {
                 if (node.nodeType !== 1) return false; // Not an element
                 const isWidget = node.matches('[data-widget="wait-time"]') ||
@@ -299,10 +343,6 @@
 
         const config = { childList: true, subtree: true };
         observer.observe(document.body, config);
-
-        window.addEventListener('unload', () => {
-          observer.disconnect();
-        });
       }
 
       widgets.forEach(widget => {
@@ -405,6 +445,78 @@
           if (!data.waitTimeData) return;
           element.dataset.initialized = "true";
 
+          // Setup polling for this widget
+          const pollingInterval = setInterval(async () => {
+            try {
+              const updatedData = await fetchWidgetData(token);
+              if (!updatedData.waitTimeData) return;
+
+              const {
+                waitTime: { waitTime, existsAvailableProvider, reason },
+                schedule: { weeklySchedule, scheduleExceptions },
+                storeTimeZone,
+                operatingMode,
+                bookingGroupOperationMode
+              } = updatedData.waitTimeData;
+
+              const currentDate = getCurrentDate(storeTimeZone);
+              const currentTime = getCurrentTime(storeTimeZone);
+              const daySchedule = getCurrentDaySchedule(
+                currentDate,
+                weeklySchedule,
+                scheduleExceptions
+              );
+              const { fromTime1, toTime1, fromTime2, toTime2 } = daySchedule;
+              const intervals = [
+                { start: fromTime1, end: toTime1 },
+                { start: fromTime2, end: toTime2 }
+              ].filter((item) => !!item.start && !!item.end);
+
+              const storeScheduleMetadata = getStoreScheduleMetadata(intervals, currentTime);
+              
+              // Update store link if changed
+              if (updatedData.storeLink) {
+                element.setAttribute('data-clickable', 'true');
+                element.href = updatedData.storeLink;
+              } else {
+                element.removeAttribute('data-clickable');
+                element.removeAttribute('href');
+              }
+
+              const { isCheckinOnly } = getOperationModeStatus(operatingMode, bookingGroupOperationMode);
+
+              if (isCheckinOnly) {
+                const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
+                if (!statusString) {
+                  cleanupWidgetAttributes(element);
+                }
+                element.textContent = statusString;
+                return;
+              }
+
+              const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
+              if (statusString) {
+                element.textContent = statusString;
+                return;
+              }
+
+              const availableReason = 6;
+              const checkinAllowed = storeScheduleMetadata.isOpen && reason === availableReason;
+
+              if (checkinAllowed && waitTime) {
+                element.textContent = `${formatWaitTime(waitTime)} wait`;
+              } else {
+                cleanupWidgetAttributes(element);
+              }
+            } catch (error) {
+              console.error('Error updating widget data:', error);
+            }
+          }, 10000); // Poll every 5 seconds
+
+          // Store the interval for cleanup
+          widgetPollingIntervals.set(element, pollingInterval);
+
+          // Initial update with first data
           const {
             waitTime: { waitTime, existsAvailableProvider, reason },
             schedule: { weeklySchedule, scheduleExceptions },
@@ -448,12 +560,12 @@
           }
 
           // TODO: do we need it?
-          const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
-          console.log({ statusString });
-          if (statusString) {
-            element.textContent = statusString;
-            return;
-          }
+          // const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
+          // console.log({ statusString });
+          // if (statusString) {
+          //   element.textContent = statusString;
+          //   return;
+          // }
 
           const availableReason = 6;
           const checkinAllowed = storeScheduleMetadata.isOpen && reason === availableReason;
