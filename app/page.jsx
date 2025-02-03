@@ -38,16 +38,6 @@ export default function Page() {
                     Read the Docs
                 </Link>
                 <TestWidgetButton />
-                {/* Peca 4min* localhost*/}
-                {/* <a
-                  data-widget="wait-time"
-                  data-use-default-styles="false"
-                  data-token="eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJTdG9yZUlkIjoiYzM4MDdjZjUtMDVlOC00YjRkLTk2YzktZGM4ZTc4YTUwNWY0IiwiQm9va2luZ0dyb3VwSWQiOiJkZDdkODA4Mi02YjFiLTQzNDQtYWIxNS05YzdlMzk5NTc1NDMiLCJEZXBsb3ltZW50LVVpZCI6ImM1OWI3NTY5LTIwMzYtODI1NC1jNjcwLWU5ZjQ2NGJhNTRmNiIsIlN0b3JlLUlkIjoiNiIsIldpZGdldC1JZCI6IjI2ZjNiM2IwLWM5YjAtNDFhNC05NGMzLTFjY2E2YmMyYjNkMCIsImlzcyI6IkJvb2tlZEJ5LldpZGdldCIsImF1ZCI6IkJvb2tlZEJ5In0.gRnVp8eoepxSczcd4rIEhdTZhXKZbCdE7pm8szhkRxQ"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                </a> */}
-                {/* zona dsk 0min* https://bucolic-faloodeh-456aa7.netlify.app/*/}
                 <a 
                     data-widget="wait-time"
                     data-use-default-styles="false"
@@ -63,14 +53,6 @@ export default function Page() {
                     target="_blank"
                     rel="noopener noreferrer">
                 </a>
-                {/* Rashid's Tonsorina closed https://some-wix-test-s8t.online/*/}
-                {/* <a 
-                  data-widget="wait-time" 
-                  data-token="eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJTdG9yZUlkIjoiMzM5Yjg4YjMtOWNmZS00YTU3LTg3ZDMtNzAxMGVhYjg4YjFmIiwiQm9va2luZ0dyb3VwSWQiOiJkZDdkODA4Mi02YjFiLTQzNDQtYWIxNS05YzdlMzk5NTc1NDMiLCJEZXBsb3ltZW50LVVpZCI6ImM1OWI3NTY5LTIwMzYtODI1NC1jNjcwLWU5ZjQ2NGJhNTRmNiIsIlN0b3JlLUlkIjoiMTEiLCJXaWRnZXQtSWQiOiI1YzgxMWVkZS1mYzc0LTQ1YzktYTYyMy1iMTY4MTIwYzIyMDYiLCJpc3MiOiJCb29rZWRCeS5XaWRnZXQiLCJhdWQiOiJCb29rZWRCeSJ9.Wc0OmOmiLCzgZ9jkCHh0raBQvJ_6qS1cb2TMdsdQ3nI"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                </a> */}
             </section>
             {!!ctx && (
                 <section className="flex flex-col gap-4">
