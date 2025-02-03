@@ -48,13 +48,21 @@ export default function Page() {
                 >
                 </a> */}
                 {/* zona dsk 0min* https://bucolic-faloodeh-456aa7.netlify.app/*/}
-                {/* <a 
-                  data-widget="wait-time" 
-                  data-token="eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJTdG9yZUlkIjoiNmNjZjhlZDktNjk1Ny01N2U1LTlkNGEtMjY0YjI3Yjc5ZmJmIiwiQm9va2luZ0dyb3VwSWQiOiJkZDdkODA4Mi02YjFiLTQzNDQtYWIxNS05YzdlMzk5NTc1NDMiLCJEZXBsb3ltZW50LVVpZCI6ImM1OWI3NTY5LTIwMzYtODI1NC1jNjcwLWU5ZjQ2NGJhNTRmNiIsIlN0b3JlLUlkIjoiNCIsIldpZGdldC1JZCI6ImNiNDUwNmMwLWU3NTMtNGExNS04MzBmLTEzZTU5NDU4NjRiOSIsImlzcyI6IkJvb2tlZEJ5LldpZGdldCIsImF1ZCI6IkJvb2tlZEJ5In0.mCHdU-EIAkkHSVBV5tahKLaW2EJ-8-vAOKiLVnkOSh8"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <a 
+                    data-widget="wait-time"
+                    data-use-default-styles="false"
+                    data-token="eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJTdG9yZUlkIjoiYzlkMzZhN2MtMzQ4YS00NWI3LThlNjQtYmQ5YzNlNDQ2M2E3IiwiQm9va2luZ0dyb3VwSWQiOiJkZDdkODA4Mi02YjFiLTQzNDQtYWIxNS05YzdlMzk5NTc1NDMiLCJEZXBsb3ltZW50LVVpZCI6ImM1OWI3NTY5LTIwMzYtODI1NC1jNjcwLWU5ZjQ2NGJhNTRmNiIsIlN0b3JlLUlkIjoiMTMiLCJXaWRnZXQtSWQiOiIzMGQ2ZGU3MS1lOTBmLTQ4ZDQtYTZjOS1mZDQwZTgyM2I3NjQiLCJpc3MiOiJCb29rZWRCeS5XaWRnZXQiLCJhdWQiOiJCb29rZWRCeSJ9._QgdJgDbP8NWfVnZZnqWn_kimIC9mrfpROKBS8rgn5E"
+                    target="_blank"
+                    rel="noopener noreferrer"
                 >
-                </a> */}
+                </a>
+                <a 
+                    data-widget="wait-time"
+                    data-use-default-styles="true"
+                    data-token="eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJTdG9yZUlkIjoiYzM4MDdjZjUtMDVlOC00YjRkLTk2YzktZGM4ZTc4YTUwNWY0IiwiQm9va2luZ0dyb3VwSWQiOiJkZDdkODA4Mi02YjFiLTQzNDQtYWIxNS05YzdlMzk5NTc1NDMiLCJEZXBsb3ltZW50LVVpZCI6ImM1OWI3NTY5LTIwMzYtODI1NC1jNjcwLWU5ZjQ2NGJhNTRmNiIsIlN0b3JlLUlkIjoiNiIsIldpZGdldC1JZCI6IjQ1ZjcyZDFkLTBjNDctNDdmMS1hYmM0LWMyYjNhNmU5YTUxOCIsImlzcyI6IkJvb2tlZEJ5LldpZGdldCIsImF1ZCI6IkJvb2tlZEJ5In0.nmtIoFPZCYF56WZRUIGv9rv0KvvpppkMr-vx87w397A"
+                    target="_blank"
+                    rel="noopener noreferrer">
+                </a>
                 {/* Rashid's Tonsorina closed https://some-wix-test-s8t.online/*/}
                 {/* <a 
                   data-widget="wait-time" 
