@@ -12,6 +12,9 @@
     }
   };
 
+  const WIDGET_SELECTOR = '[data-widget="wait-time"]';
+  const UNINITIALIZED_WIDGET_SELECTOR = '[data-widget="wait-time"]:not([data-initialized="true"])';
+
   const styles = `
         [data-widget="wait-time"][data-use-default-styles="true"] {
             display: inline-flex;
@@ -44,7 +47,25 @@
     Booking: 2
   };
 
-  const pollingInterval = 10000; // TODO: change it to 5 minutes later (30 * 60 * 1000)
+  const pollingInterval = 30 * 60 * 1000; // 5 minutes
+
+  const activeIntervals = new Set();
+
+  function cleanupPollingInterval(element) {
+    const intervalId = Number(element.dataset.intervalId);
+    if (intervalId) {
+      clearInterval(intervalId);
+      activeIntervals.delete(intervalId);
+      delete element.dataset.intervalId;
+    }
+  }
+
+  function cleanupAllPollingIntervals() {
+    for (const intervalId of activeIntervals) {
+      clearInterval(intervalId);
+    }
+    activeIntervals.clear();
+  }
 
   // helper functions start
   function getOperationModeStatus(operatingMode, bookingGroupOperationMode) {
@@ -254,12 +275,11 @@
 
   function initializeWidgetAttributes(element, storeLink = null) {
     element.setAttribute('data-has-time', 'true');
-    element.setAttribute('role', 'button');
-    element.setAttribute('tabindex', '0');
+    element.role = storeLink ? 'button' : null;
+    element.tabIndex = storeLink ? '0' : null;
     element.onclick = storeLink ? () => window.open(storeLink, '_blank', 'noopener,noreferrer') : null;
     element.setAttribute('data-clickable', storeLink ? 'true' : 'false');
   }
-
   // helper functions end
 
   // fetch functions start
@@ -334,7 +354,7 @@
   // Auto-initialize when DOM is ready
   document.addEventListener('DOMContentLoaded', async function () {
     function init() {
-      const widgets = document.querySelectorAll('[data-widget="wait-time"]') || [];
+      const widgets = document.querySelectorAll(WIDGET_SELECTOR) || [];
 
       if (!widgets.length) {
         console.error('No wait time widgets found');
@@ -343,7 +363,7 @@
       let stylesInjected = false;
       function injectStylesIfNeeded() {
         if (stylesInjected) return;
-        const widgets = document.querySelectorAll('[data-widget="wait-time"]');
+        const widgets = document.querySelectorAll(WIDGET_SELECTOR) || [];
         
         const hasDefaultStylesWidget = Array.from(widgets).some(widget =>
           widget.getAttribute('data-use-default-styles') !== 'false'
@@ -357,23 +377,8 @@
         }
       }
 
-      const widgetPollingIntervals = new WeakMap();
-
-      function cleanupPollingInterval(element) {
-        const interval = widgetPollingIntervals.get(element);
-        if (interval) {
-          clearInterval(interval);
-          widgetPollingIntervals.delete(element);
-        }
-      }
-
-      function cleanupAllPollingIntervals() {
-        const widgets = document.querySelectorAll('[data-widget="wait-time"]') || [];
-        widgets.forEach(cleanupPollingInterval);
-      }
-
       function initializeNewWidgets() {
-        const newWidgets = document.querySelectorAll('[data-widget="wait-time"]:not([data-initialized="true"])');
+        const newWidgets = document.querySelectorAll(UNINITIALIZED_WIDGET_SELECTOR) || [];
         newWidgets.forEach(widget => {
           const token = widget.getAttribute('data-token');
           if (token) {
@@ -391,10 +396,10 @@
               // Check for removed widgets to cleanup polling
               mutation.removedNodes.forEach(node => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
-                  const widgets = node.querySelectorAll('[data-widget="wait-time"]');
+                  const widgets = node.querySelectorAll(WIDGET_SELECTOR);
                   widgets.forEach(cleanupPollingInterval);
                   // Also check if the removed node itself is a widget
-                  if (node.matches('[data-widget="wait-time"]')) {
+                  if (node.matches(WIDGET_SELECTOR)) {
                     cleanupPollingInterval(node);
                   }
                 }
@@ -402,8 +407,8 @@
 
               return Array.from(mutation.addedNodes).some(node => {
                 if (node.nodeType !== 1) return false;
-                const isWidget = node.matches('[data-widget="wait-time"]') ||
-                  node.querySelector('[data-widget="wait-time"]');
+                const isWidget = node.matches(WIDGET_SELECTOR) ||
+                  node.querySelector(WIDGET_SELECTOR);
                 return isWidget;
               });
             }
@@ -427,8 +432,7 @@
 
       injectStylesIfNeeded();
       initializeNewWidgets();
-
-      observeDOMChanges()
+      observeDOMChanges();
 
       function updateWidgetContent(element, waitTimeData) {
         const {
@@ -483,9 +487,12 @@
       }
 
       async function updateWidget(element, token) {
-        cleanupPollingInterval(element);
-
         if (element.dataset.initialized === "true") return;
+        
+        // Only cleanup if there's an existing interval
+        if (element.dataset.intervalId) {
+          cleanupPollingInterval(element);
+        }
 
         try {
           const initialData = await fetchWidgetData(token);
@@ -507,11 +514,15 @@
             }
           }, pollingInterval);
 
-          widgetPollingIntervals.set(element, interval);
+          // Store interval ID in dataset and track it
+          element.dataset.intervalId = interval;
+          activeIntervals.add(interval);
         } catch (error) {
           cleanupWidgetAttributes(element);
           element.textContent = '';
-          cleanupPollingInterval(element);
+          if (element.dataset.intervalId) {
+            cleanupPollingInterval(element);
+          }
           console.error(`Unexpected error in updateWidget: ${error.message}`, error);
         }
       }
