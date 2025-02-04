@@ -321,6 +321,13 @@
     },
 
     updateWidgetContent(element, waitTimeData) {
+      if (!waitTimeData || !waitTimeData.waitTime || !waitTimeData.schedule) {
+        console.warn('No wait time data found');
+        widgetManager.cleanupWidgetAttributes(element);
+        element.textContent = '';
+        return;
+      }
+
       const {
         waitTime: { waitTime, existsAvailableProvider, reason },
         schedule: { weeklySchedule, scheduleExceptions },
@@ -328,6 +335,13 @@
         operatingMode,
         bookingGroupOperationMode
       } = waitTimeData;
+
+      if (!storeTimeZone) {
+        console.warn('Store timezone not provided');
+        widgetManager.cleanupWidgetAttributes(element);
+        element.textContent = '';
+        return;
+      }
 
       const currentDate = timeUtils.getCurrentDate(storeTimeZone);
       const currentTime = timeUtils.getCurrentTime(storeTimeZone);
