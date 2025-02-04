@@ -41,6 +41,10 @@
             background-color: #f5f5f5;
         }
     `;
+  
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
 
   const OperationModeBitFlag = {
     Checkin: 1,
@@ -360,23 +364,6 @@
         console.error('No wait time widgets found');
       }
 
-      let stylesInjected = false;
-      function injectStylesIfNeeded() {
-        if (stylesInjected) return;
-        const widgets = document.querySelectorAll(WIDGET_SELECTOR) || [];
-        
-        const hasDefaultStylesWidget = Array.from(widgets).some(widget =>
-          widget.getAttribute('data-use-default-styles') !== 'false'
-        );
-      
-        if (hasDefaultStylesWidget) {
-          const styleSheet = document.createElement("style");
-          styleSheet.textContent = styles;
-          document.head.appendChild(styleSheet);
-          stylesInjected = true;
-        }
-      }
-
       function initializeNewWidgets() {
         const newWidgets = document.querySelectorAll(UNINITIALIZED_WIDGET_SELECTOR) || [];
         newWidgets.forEach(widget => {
@@ -416,7 +403,6 @@
           });
 
           if (hasNewWidgets) {
-            injectStylesIfNeeded();
             initializeNewWidgets();
           }
         });
@@ -430,7 +416,7 @@
         });
       }
 
-      injectStylesIfNeeded();
+      // Initial setup
       initializeNewWidgets();
       observeDOMChanges();
 
