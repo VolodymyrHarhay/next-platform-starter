@@ -14,348 +14,358 @@
 
   const WIDGET_SELECTOR = '[data-widget="wait-time"]';
   const UNINITIALIZED_WIDGET_SELECTOR = '[data-widget="wait-time"]:not([data-initialized="true"])';
-
-  const styles = `
-        [data-widget="wait-time"][data-use-default-styles="true"] {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            height: 35px;
-            width: 135px;
-            text-decoration: none;
-            cursor: default;
-        }
-        [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"] {
-            color: #000000;
-            font-size: 16px;
-            background-color: #FFFFFF;
-            border: 1px solid #000000;
-            border-radius: 30px;
-            transition: all 0.2s ease;
-            cursor: default;
-        }
-        [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"][data-clickable="true"] {
-            cursor: pointer;
-        }
-        [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"][data-clickable="true"]:hover {
-            background-color: #f5f5f5;
-        }
-    `;
-  
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = styles;
-  document.head.appendChild(styleSheet);
+  const pollingInterval = 5 * 60 * 1000;
 
   const OperationModeBitFlag = {
     Checkin: 1,
     Booking: 2
   };
 
-  const pollingInterval = 30 * 60 * 1000; // 5 minutes
-
   const activeIntervals = new Set();
 
-  function cleanupPollingInterval(element) {
-    const intervalId = Number(element.dataset.intervalId);
-    if (intervalId) {
-      clearInterval(intervalId);
-      activeIntervals.delete(intervalId);
-      delete element.dataset.intervalId;
-    }
+  const styles = `
+  [data-widget="wait-time"][data-use-default-styles="true"] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 35px;
+      width: 135px;
+      cursor: default;
   }
-
-  function cleanupAllPollingIntervals() {
-    for (const intervalId of activeIntervals) {
-      clearInterval(intervalId);
-    }
-    activeIntervals.clear();
+  [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"] {
+      color: #000000;
+      font-size: 16px;
+      background-color: #FFFFFF;
+      border: 1px solid #000000;
+      border-radius: 30px;
+      transition: all 0.2s ease;
+      cursor: default;
   }
-
-  // helper functions start
-  function getOperationModeStatus(operatingMode, bookingGroupOperationMode) {
-    const isBookingGroupAllowed = Boolean((bookingGroupOperationMode || 0) & OperationModeBitFlag.Booking);
-    const isCheckinGroupAllowed = Boolean((bookingGroupOperationMode || 0) & OperationModeBitFlag.Checkin);
-    const isBookingAllowed = Boolean((operatingMode || 0) & OperationModeBitFlag.Booking);
-    const isCheckinAllowed = Boolean((operatingMode || 0) & OperationModeBitFlag.Checkin);
-
-    return {
-      isCheckinOnly: (!isBookingGroupAllowed || !isBookingAllowed) && isCheckinGroupAllowed && isCheckinAllowed
-    };
+  [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"][data-clickable="true"] {
+      cursor: pointer;
   }
-
-  function getCurrentDate(timezone = 'America/New_York') {
-    const date = new Date();
-
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-
-    const parts = formatter.formatToParts(date);
-    const dateParts = {};
-
-    parts.forEach(part => {
-      if (part.type !== 'literal') {
-        dateParts[part.type] = part.value;
-      }
-    });
-
-    // Return in YYYY-MM-DDT00:00:00 format
-    return `${dateParts.year}-${dateParts.month}-${dateParts.day}T00:00:00`;
+  [data-widget="wait-time"][data-use-default-styles="true"][data-has-time="true"][data-clickable="true"]:hover {
+      background-color: #f5f5f5;
   }
+`;
+  
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
 
-  function getCurrentTime(timezone = 'America/New_York') {
-    const date = new Date();
-
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-
-    const parts = formatter.formatToParts(date);
-    const timeParts = {};
-
-    parts.forEach(part => {
-      if (part.type !== 'literal') {
-        timeParts[part.type] = part.value;
-      }
-    });
-
-    // Ensure hours are always 2 digits
-    const hours = timeParts.hour.padStart(2, '0');
-    const minutes = timeParts.minute;
-    const seconds = timeParts.second;
-
-    return `${hours}:${minutes}:${seconds}`;
-  }
-
-  function getCurrentWeekday(timezone = 'America/New_York') {
-    const date = new Date();
-
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-    });
-
-    const utcDate = new Date(formatter.format(date));
-    const day = utcDate.getDay();
-    return day === 0 ? 7 : day; // Convert Sunday from 0 to 7
-  }
-
-  function getCurrentDaySchedule(currentDate, weeklySchedule, scheduleExceptions) {
-    const exception = scheduleExceptions?.find(({ date }) => date === currentDate);
-
-    if (exception) {
-      return exception;
-    }
-
-    const currentWeekday = getCurrentWeekday();
-    const regularSchedule = weeklySchedule?.find(schedule => schedule.weekday === currentWeekday);
-    return regularSchedule;
-  }
-
-  function formatWaitTime(timeString) {
-    if (!timeString) return '';
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const totalMinutes = hours * 60 + minutes;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes > 0 ? minutes + 'min' : ''}`;
-    }
-    return `${totalMinutes} min`;
-  }
-
-  function formatToUSTime(timeString) {
-    if (!timeString) return '';
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-  }
-
-  function getStatusString(scheduleMetadata, intervals, existsAvailableProvider) {
-    const { isOpen, closedAtDate, closedAlready, beforeOpen, onBreak } = scheduleMetadata;
-
-    if (closedAtDate || closedAlready) {
-      return 'Closed';
-    }
-
-    if (beforeOpen) {
-      const startTime = formatToUSTime(intervals[0].start);
-      return `Opens ${startTime}`;
-    }
-
-    if (onBreak) {
-      const startTime = formatToUSTime(intervals[1].start);
-      return `Opens ${startTime}`;
-    }
-
-    if (isOpen && !existsAvailableProvider) {
-      return 'Unavailable';
-    }
-
-    return '';
-  }
-
-  function getStoreScheduleMetadata(intervals, time) {
-    // Convert HH:mm:ss to comparable number (seconds since midnight)
-    function timeToSeconds(timeStr) {
-      const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-      return hours * 3600 + minutes * 60 + seconds;
-    }
-
-    const currentTimeSeconds = timeToSeconds(time);
-
-    const workingInterval = intervals.find(({ start, end }) => {
-      const startSeconds = timeToSeconds(start);
-      const endSeconds = timeToSeconds(end);
-      return currentTimeSeconds >= startSeconds && currentTimeSeconds <= endSeconds;
-    });
-
-    const isOpen = !!workingInterval;
-
-    const beforeOpen = !isOpen && intervals[0] && currentTimeSeconds < timeToSeconds(intervals[0].start);
-
-    // Check if closing soon (within 1 hour)
-    const closingSoon = workingInterval &&
-      (timeToSeconds(workingInterval.end) - currentTimeSeconds <= 3600);
-
-    const onBreak = intervals.length === 2 &&
-      currentTimeSeconds >= timeToSeconds(intervals[0].end) &&
-      currentTimeSeconds <= timeToSeconds(intervals[1].start);
-
-    const closedAtDate = intervals.length === 0;
-
-    const closedAlready = intervals.length > 0 &&
-      currentTimeSeconds > timeToSeconds(intervals[intervals.length - 1].end);
-
-    return {
-      isOpen,
-      beforeOpen,
-      closingSoon,
-      onBreak,
-      closedAtDate,
-      closedAlready,
-      currentInterval: workingInterval || null
-    };
-  }
-
-  async function retryAsync(fn, callName = 'API Call') {
-    const retries = 3;
-    const initialDelay = 2000;
-    const factor = 2;
-
-    let attempt = 0;
-    let delay = initialDelay;
-
-    while (attempt < retries) {
-      try {
-        return await fn();
-      } catch (error) {
-        attempt++;
-        console.warn(`${callName} - Attempt ${attempt} failed: ${error.message}`);
-        if (attempt >= retries) {
-          console.error(`${callName} failed after ${retries} attempts.`);
-          throw error;
+  const timeUtils = {
+    getCurrentDate(timezone = 'America/New_York') {
+      const date = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const parts = formatter.formatToParts(date);
+      const dateParts = {};
+      parts.forEach(part => {
+        if (part.type !== 'literal') {
+          dateParts[part.type] = part.value;
         }
-
-        // Add jitter (random variation) to avoid synchronized retries
-        const jitter = Math.random() * 200;
-        console.log(`${callName} - Retrying in ${delay + jitter}ms...`);
-        await new Promise(res => setTimeout(res, delay + jitter));
-        delay *= factor; // Exponential backoff
-      }
-    }
-  }
-
-  function cleanupWidgetAttributes(element) {
-    element.removeAttribute('data-has-time');
-    element.removeAttribute('data-clickable');
-  }
-
-  function initializeWidgetAttributes(element, storeLink = null) {
-    element.setAttribute('data-has-time', 'true');
-    element.role = storeLink ? 'button' : null;
-    element.tabIndex = storeLink ? '0' : null;
-    element.onclick = storeLink ? () => window.open(storeLink, '_blank', 'noopener,noreferrer') : null;
-    element.setAttribute('data-clickable', storeLink ? 'true' : 'false');
-  }
-  // helper functions end
-
-  // fetch functions start
-  async function fetchWaitTime(token) {
-    return retryAsync(async () => {
-      const headers = {
-        "Accept": "application/json",
-        "X-BookedBy-Widget-Context": token
-      };
-
-      const response = await fetch(API_CONFIG.waitTime.url, {
-        method: API_CONFIG.waitTime.method,
-        headers: headers
       });
+      return `${dateParts.year}-${dateParts.month}-${dateParts.day}T00:00:00`;
+    },
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.response;
-    }, 'Fetch Wait Time');
-  }
-
-  async function fetchStoreLink(token) {
-    return retryAsync(async () => {
-      const headers = {
-        "Accept": "application/json",
-        "X-BookedBy-Widget-Context": token
-      };
-
-      const response = await fetch(API_CONFIG.storeLink.url, {
-        method: API_CONFIG.storeLink.method,
-        headers: headers
+    getCurrentTime(timezone = 'America/New_York') {
+      const date = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
       });
+      const parts = formatter.formatToParts(date);
+      const timeParts = {};
+      parts.forEach(part => {
+        if (part.type !== 'literal') {
+          timeParts[part.type] = part.value;
+        }
+      });
+      const hours = timeParts.hour.padStart(2, '0');
+      return `${hours}:${timeParts.minute}:${timeParts.second}`;
+    },
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return { storeLink: data.response };
-    }, 'Fetch Store Link');
-  }
-
-  async function fetchWidgetData(token) {
-    let waitTimeData = null;
-    try {
-      waitTimeData = await fetchWaitTime(token);
-    } catch (error) {
-      console.error('Failed to fetch wait time:', error);
+    getCurrentWeekday(timezone = 'America/New_York') {
+      const date = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+      const utcDate = new Date(formatter.format(date));
+      const day = utcDate.getDay();
+      return day === 0 ? 7 : day;
     }
+  };
 
-    let storeLink = null;
-    // Only fetch the store link if wait time data is available
-    if (waitTimeData !== null) {
+  const apiUtils = {
+    async retryAsync(fn, callName = 'API Call') {
+      const retries = 3;
+      const initialDelay = 2000;
+      const factor = 2;
+      let attempt = 0;
+      let delay = initialDelay;
+
+      while (attempt < retries) {
+        try {
+          return await fn();
+        } catch (error) {
+          attempt++;
+          console.warn(`${callName} - Attempt ${attempt} failed: ${error.message}`);
+          if (attempt >= retries) {
+            console.error(`${callName} failed after ${retries} attempts.`);
+            throw error;
+          }
+          const jitter = Math.random() * 200;
+          console.log(`${callName} - Retrying in ${delay + jitter}ms...`);
+          await new Promise(res => setTimeout(res, delay + jitter));
+          delay *= factor;
+        }
+      }
+    },
+
+    async fetchWaitTime(token) {
+      return this.retryAsync(async () => {
+        const response = await fetch(API_CONFIG.waitTime.url, {
+          method: API_CONFIG.waitTime.method,
+          headers: {
+            "Accept": "application/json",
+            "X-BookedBy-Widget-Context": token
+          }
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        return data.response;
+      }, 'Wait Time API Call');
+    },
+
+    async fetchStoreLink(token) {
+      return this.retryAsync(async () => {
+        const response = await fetch(API_CONFIG.storeLink.url, {
+          method: API_CONFIG.storeLink.method,
+          headers: {
+            "Accept": "application/json",
+            "X-BookedBy-Widget-Context": token
+          }
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        return { storeLink: data.response };
+      }, 'Store Link API Call');
+    },
+
+    async fetchWidgetData(token) {
+      let waitTimeData = null;
       try {
-        const storeLinkData = await fetchStoreLink(token);
-        storeLink = storeLinkData.storeLink;
+        waitTimeData = await this.fetchWaitTime(token);
       } catch (error) {
-        console.error('Failed to fetch store link:', error);
+        console.error('Failed to fetch wait time:', error);
       }
+
+      let storeLink = null;
+      if (waitTimeData !== null) {
+        try {
+          const storeLinkData = await this.fetchStoreLink(token);
+          storeLink = storeLinkData.storeLink;
+        } catch (error) {
+          console.error('Failed to fetch store link:', error);
+        }
+      }
+
+      return { waitTimeData, storeLink };
     }
+  };
 
-    return {
-      waitTimeData,
-      storeLink
-    };
-  }
-  // fetch functions end
+  const widgetManager = {
+    cleanupPollingInterval(element) {
+      const intervalId = Number(element.dataset.intervalId);
+      if (intervalId) {
+        clearInterval(intervalId);
+        activeIntervals.delete(intervalId);
+        delete element.dataset.intervalId;
+      }
+    },
 
-  // Auto-initialize when DOM is ready
+    cleanupAllPollingIntervals() {
+      for (const intervalId of activeIntervals) {
+        clearInterval(intervalId);
+      }
+      activeIntervals.clear();
+    },
+
+    cleanupWidgetAttributes(element) {
+      element.removeAttribute('data-has-time');
+      element.removeAttribute('data-clickable');
+    },
+
+    initializeWidgetAttributes(element, storeLink = null) {
+      element.setAttribute('data-has-time', 'true');
+      element.role = storeLink ? 'button' : null;
+      element.tabIndex = storeLink ? '0' : null;
+      element.onclick = storeLink ? () => window.open(storeLink, '_blank', 'noopener,noreferrer') : null;
+      element.setAttribute('data-clickable', storeLink ? 'true' : 'false');
+    }
+  };
+
+  const contentManager = {
+    getOperationModeStatus(operatingMode, bookingGroupOperationMode) {
+      const isBookingGroupAllowed = Boolean((bookingGroupOperationMode || 0) & OperationModeBitFlag.Booking);
+      const isCheckinGroupAllowed = Boolean((bookingGroupOperationMode || 0) & OperationModeBitFlag.Checkin);
+      const isBookingAllowed = Boolean((operatingMode || 0) & OperationModeBitFlag.Booking);
+      const isCheckinAllowed = Boolean((operatingMode || 0) & OperationModeBitFlag.Checkin);
+
+      return {
+        isCheckinOnly: (!isBookingGroupAllowed || !isBookingAllowed) && isCheckinGroupAllowed && isCheckinAllowed
+      };
+    },
+
+    getCurrentDaySchedule(currentDate, weeklySchedule, scheduleExceptions) {
+      const exception = scheduleExceptions?.find(({ date }) => date === currentDate);
+
+      if (exception) {
+        return exception;
+      }
+
+      const currentWeekday = timeUtils.getCurrentWeekday();
+      const regularSchedule = weeklySchedule?.find(schedule => schedule.weekday === currentWeekday);
+      return regularSchedule;
+    },
+
+    formatWaitTime(timeString) {
+      if (!timeString) return '';
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const totalMinutes = hours * 60 + minutes;
+
+      if (hours > 0) {
+        return `${hours}h ${minutes > 0 ? minutes + 'min' : ''}`;
+      }
+      return `${totalMinutes} min`;
+    },
+
+    formatToUSTime(timeString) {
+      if (!timeString) return '';
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    },
+
+    getStatusString(scheduleMetadata, intervals, existsAvailableProvider) {
+      const { isOpen, closedAtDate, closedAlready, beforeOpen, onBreak } = scheduleMetadata;
+
+      if (closedAtDate || closedAlready) {
+        return 'Closed';
+      }
+
+      if (beforeOpen) {
+        const startTime = contentManager.formatToUSTime(intervals[0].start);
+        return `Opens ${startTime}`;
+      }
+
+      if (onBreak) {
+        const startTime = contentManager.formatToUSTime(intervals[1].start);
+        return `Opens ${startTime}`;
+      }
+
+      if (isOpen && !existsAvailableProvider) {
+        return 'Unavailable';
+      }
+
+      return '';
+    },
+
+    getStoreScheduleMetadata(intervals, time) {
+      // Convert HH:mm:ss to comparable number (seconds since midnight)
+      function timeToSeconds(timeStr) {
+        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+        return hours * 3600 + minutes * 60 + seconds;
+      }
+
+      const currentTimeSeconds = timeToSeconds(time);
+
+      const workingInterval = intervals.find(({ start, end }) => {
+        const startSeconds = timeToSeconds(start);
+        const endSeconds = timeToSeconds(end);
+        return currentTimeSeconds >= startSeconds && currentTimeSeconds <= endSeconds;
+      });
+
+      const isOpen = !!workingInterval;
+
+      const beforeOpen = !isOpen && intervals[0] && currentTimeSeconds < timeToSeconds(intervals[0].start);
+
+      // Check if closing soon (within 1 hour)
+      const closingSoon = workingInterval &&
+        (timeToSeconds(workingInterval.end) - currentTimeSeconds <= 3600);
+
+      const onBreak = intervals.length === 2 &&
+        currentTimeSeconds >= timeToSeconds(intervals[0].end) &&
+        currentTimeSeconds <= timeToSeconds(intervals[1].start);
+
+      const closedAtDate = intervals.length === 0;
+
+      const closedAlready = intervals.length > 0 &&
+        currentTimeSeconds > timeToSeconds(intervals[intervals.length - 1].end);
+
+      return {
+        isOpen,
+        beforeOpen,
+        closingSoon,
+        onBreak,
+        closedAtDate,
+        closedAlready,
+        currentInterval: workingInterval || null
+      };
+    },
+
+    updateWidgetContent(element, waitTimeData) {
+      const {
+        waitTime: { waitTime, existsAvailableProvider, reason },
+        schedule: { weeklySchedule, scheduleExceptions },
+        storeTimeZone,
+        operatingMode,
+        bookingGroupOperationMode
+      } = waitTimeData;
+
+      const currentDate = timeUtils.getCurrentDate(storeTimeZone);
+      const currentTime = timeUtils.getCurrentTime(storeTimeZone);
+      const daySchedule = contentManager.getCurrentDaySchedule(
+        currentDate,
+        weeklySchedule,
+        scheduleExceptions
+      );
+      const { fromTime1, toTime1, fromTime2, toTime2 } = daySchedule;
+      const intervals = [
+        { start: fromTime1, end: toTime1 },
+        { start: fromTime2, end: toTime2 }
+      ].filter((item) => !!item.start && !!item.end);
+
+      const storeScheduleMetadata = contentManager.getStoreScheduleMetadata(intervals, currentTime);
+      const { isCheckinOnly } = contentManager.getOperationModeStatus(operatingMode, bookingGroupOperationMode);
+
+      if (isCheckinOnly) {
+        const statusString = contentManager.getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
+        if (!statusString) {
+          widgetManager.cleanupWidgetAttributes(element);
+        }
+        element.textContent = statusString;
+        return;
+      }
+
+      const availableReason = 6;
+      const checkinAllowed = storeScheduleMetadata.isOpen && reason === availableReason;
+
+      if (checkinAllowed && waitTime) {
+        element.textContent = `${contentManager.formatWaitTime(waitTime)} wait`;
+      } else {
+        widgetManager.cleanupWidgetAttributes(element);
+      }
+
+    }
+  };
+
   document.addEventListener('DOMContentLoaded', async function () {
     function init() {
       const widgets = document.querySelectorAll(WIDGET_SELECTOR) || [];
@@ -384,10 +394,10 @@
               mutation.removedNodes.forEach(node => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                   const widgets = node.querySelectorAll(WIDGET_SELECTOR);
-                  widgets.forEach(cleanupPollingInterval);
+                  widgets.forEach(widgetManager.cleanupPollingInterval);
                   // Also check if the removed node itself is a widget
                   if (node.matches(WIDGET_SELECTOR)) {
-                    cleanupPollingInterval(node);
+                    widgetManager.cleanupPollingInterval(node);
                   }
                 }
               });
@@ -412,7 +422,7 @@
 
         window.addEventListener('unload', () => {
           observer.disconnect();
-          cleanupAllPollingIntervals();
+          widgetManager.cleanupAllPollingIntervals();
         });
       }
 
@@ -420,83 +430,31 @@
       initializeNewWidgets();
       observeDOMChanges();
 
-      function updateWidgetContent(element, waitTimeData) {
-        const {
-          waitTime: { waitTime, existsAvailableProvider, reason },
-          schedule: { weeklySchedule, scheduleExceptions },
-          storeTimeZone,
-          operatingMode,
-          bookingGroupOperationMode
-        } = waitTimeData;
-
-        const currentDate = getCurrentDate(storeTimeZone);
-        const currentTime = getCurrentTime(storeTimeZone);
-        const daySchedule = getCurrentDaySchedule(
-          currentDate,
-          weeklySchedule,
-          scheduleExceptions
-        );
-        const { fromTime1, toTime1, fromTime2, toTime2 } = daySchedule;
-        const intervals = [
-          { start: fromTime1, end: toTime1 },
-          { start: fromTime2, end: toTime2 }
-        ].filter((item) => !!item.start && !!item.end);
-
-        const storeScheduleMetadata = getStoreScheduleMetadata(intervals, currentTime);
-        const { isCheckinOnly } = getOperationModeStatus(operatingMode, bookingGroupOperationMode);
-
-        if (isCheckinOnly) {
-          const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
-          if (!statusString) {
-            cleanupWidgetAttributes(element);
-          }
-          element.textContent = statusString;
-          return;
-        }
-
-
-        // TODO: why we do not have it in the BB?
-        const statusString = getStatusString(storeScheduleMetadata, intervals, existsAvailableProvider);
-        if (statusString) {
-          element.textContent = statusString;
-          return;
-        }
-
-        const availableReason = 6;
-        const checkinAllowed = storeScheduleMetadata.isOpen && reason === availableReason;
-
-        if (checkinAllowed && waitTime) {
-          element.textContent = `${formatWaitTime(waitTime)} wait`;
-        } else {
-          cleanupWidgetAttributes(element);
-        }
-      }
-
       async function updateWidget(element, token) {
         if (element.dataset.initialized === "true") return;
         
         // Only cleanup if there's an existing interval
         if (element.dataset.intervalId) {
-          cleanupPollingInterval(element);
+          widgetManager.cleanupPollingInterval(element);
         }
 
         try {
-          const initialData = await fetchWidgetData(token);
+          const initialData = await apiUtils.fetchWidgetData(token);
           if (!initialData.waitTimeData) return;
           element.dataset.initialized = "true";
 
-          initializeWidgetAttributes(element, initialData.storeLink);
-          updateWidgetContent(element, initialData.waitTimeData);
+          widgetManager.initializeWidgetAttributes(element, initialData.storeLink);
+          contentManager.updateWidgetContent(element, initialData.waitTimeData);
 
           // Setup polling for wait time only
           const interval = setInterval(async () => {
             try {
-              const waitTimeData = await fetchWaitTime(token);
+              const waitTimeData = await apiUtils.fetchWaitTime(token);
               if (!waitTimeData) return;
-              updateWidgetContent(element, waitTimeData);
+              contentManager.updateWidgetContent(element, waitTimeData);
             } catch (error) {
               console.error('Error updating widget data:', error);
-              cleanupPollingInterval(element);
+              widgetManager.cleanupPollingInterval(element);
             }
           }, pollingInterval);
 
@@ -504,10 +462,10 @@
           element.dataset.intervalId = interval;
           activeIntervals.add(interval);
         } catch (error) {
-          cleanupWidgetAttributes(element);
+          widgetManager.cleanupWidgetAttributes(element);
           element.textContent = '';
           if (element.dataset.intervalId) {
-            cleanupPollingInterval(element);
+            widgetManager.cleanupPollingInterval(element);
           }
           console.error(`Unexpected error in updateWidget: ${error.message}`, error);
         }
