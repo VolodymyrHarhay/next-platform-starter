@@ -250,8 +250,16 @@
   function cleanupWidgetAttributes(element) {
     element.removeAttribute('data-has-time');
     element.removeAttribute('data-clickable');
-    element.removeAttribute('href');
   }
+
+  function initializeWidgetAttributes(element, storeLink = null) {
+    element.setAttribute('data-has-time', 'true');
+    element.setAttribute('role', 'button');
+    element.setAttribute('tabindex', '0');
+    element.onclick = storeLink ? () => window.open(storeLink, '_blank', 'noopener,noreferrer') : null;
+    element.setAttribute('data-clickable', storeLink ? 'true' : 'false');
+  }
+
   // helper functions end
 
   // fetch functions start
@@ -411,7 +419,6 @@
         const config = { childList: true, subtree: true };
         observer.observe(document.body, config);
 
-        // TODO: do we need it here?
         window.addEventListener('unload', () => {
           observer.disconnect();
           cleanupAllPollingIntervals();
@@ -485,15 +492,7 @@
           if (!initialData.waitTimeData) return;
           element.dataset.initialized = "true";
 
-          element.setAttribute('data-has-time', 'true');
-          if (initialData.storeLink) {
-            element.setAttribute('data-clickable', 'true');
-            element.href = initialData.storeLink;
-          } else {
-            element.removeAttribute('data-clickable');
-            element.removeAttribute('href');
-          }
-
+          initializeWidgetAttributes(element, initialData.storeLink);
           updateWidgetContent(element, initialData.waitTimeData);
 
           // Setup polling for wait time only
