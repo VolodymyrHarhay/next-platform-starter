@@ -81,7 +81,7 @@ export default function Page() {
                     rel="noopener noreferrer">
                 </a> */}
             </section>
-            {!!ctx && (
+            {/* {!!ctx && (
                 <section className="flex flex-col gap-4">
                     <Markdown content={contextExplainer} />
                     <RuntimeContextCard />
@@ -91,7 +91,7 @@ export default function Page() {
                 <Markdown content={preDynamicContentExplainer} />
                 <RandomQuote />
                 <Markdown content={postDynamicContentExplainer} />
-            </section>
+            </section> */}
         </main>
     );
 }
