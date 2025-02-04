@@ -453,7 +453,11 @@
               if (!waitTimeData) return;
               contentManager.updateWidgetContent(element, waitTimeData);
             } catch (error) {
-              console.error('Error updating widget data:', error);
+              if (error?.response?.userMessage) {
+                console.error('Error updating widget data:', error.response.userMessage);
+              } else {
+                console.error('Error updating widget data:', error);
+              }
               widgetManager.cleanupPollingInterval(element);
             }
           }, pollingInterval);
@@ -467,7 +471,11 @@
           if (element.dataset.intervalId) {
             widgetManager.cleanupPollingInterval(element);
           }
-          console.error(`Unexpected error in updateWidget: ${error.message}`, error);
+          if (error?.response?.userMessage) {
+            console.error('Unexpected error in updateWidget:', error.response.userMessage);
+          } else {
+            console.error('Unexpected error in updateWidget:', error.message, error);
+          }
         }
       }
     }
